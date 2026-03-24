@@ -313,13 +313,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             Navigator.of(context).pop(true);
                           }
                         } on WrongPasswordException {
+                          if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Current password is incorrect.')),
                           );
                           setStateDialog(() => busy = false);
                         } catch (_) {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(const SnackBar(content: Text('Unable to update password/hint.')));
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Unable to update password/hint.')),
+                          );
                           setStateDialog(() => busy = false);
                         }
                       },
