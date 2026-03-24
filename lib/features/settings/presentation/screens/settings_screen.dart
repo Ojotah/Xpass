@@ -25,10 +25,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (draft == null) return;
     setState(() => _saving = true);
     await ref.read(settingsControllerProvider.notifier).saveSettings(draft);
-    if (mounted) {
-      setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Applied.')));
-    }
+    if (!mounted) return;
+    setState(() => _saving = false);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Applied.')));
   }
 
   void _discard(AppSettings settings) {
@@ -49,140 +48,156 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           final draft = _draft!;
           final activeVault = draft.activeVault;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
-            child: Column(
-              children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Appearance', style: Theme.of(context).textTheme.titleLarge),
-                      DropdownButtonFormField<ThemeMode>(
-                        initialValue: draft.themeMode,
-                        decoration: const InputDecoration(labelText: 'Theme'),
-                        items: const [
-                          DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
-                          DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
-                          DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
-                        ],
-                        onChanged: (value) => setState(() => _draft = draft.copyWith(themeMode: value)),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Appearance', style: Theme.of(context).textTheme.titleLarge),
+                              DropdownButtonFormField<ThemeMode>(
+                                initialValue: draft.themeMode,
+                                decoration: const InputDecoration(labelText: 'Theme'),
+                                items: const [
+                                  DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
+                                  DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
+                                  DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
+                                ],
+                                onChanged: (value) =>
+                                    setState(() => _draft = draft.copyWith(themeMode: value)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Security', style: Theme.of(context).textTheme.titleLarge),
+                              SwitchListTile(
+                                value: draft.biometricEnabled,
+                                title: const Text('Enable biometric unlock'),
+                                onChanged: (value) =>
+                                    setState(() => _draft = draft.copyWith(biometricEnabled: value)),
+                              ),
+                              DropdownButtonFormField<int>(
+                                initialValue: draft.autoLockTimeout,
+                                decoration:
+                                    const InputDecoration(labelText: 'Auto-lock timeout (minutes)'),
+                                items: const [1, 3, 5, 10, 15]
+                                    .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
+                                    .toList(),
+                                onChanged: (value) =>
+                                    setState(() => _draft = draft.copyWith(autoLockTimeout: value)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Clipboard', style: Theme.of(context).textTheme.titleLarge),
+                              SwitchListTile(
+                                value: draft.clipboardClearEnabled,
+                                title: const Text('Auto-clear clipboard'),
+                                onChanged: (value) => setState(
+                                  () => _draft = draft.copyWith(clipboardClearEnabled: value),
+                                ),
+                              ),
+                              DropdownButtonFormField<int>(
+                                initialValue: draft.clipboardClearDuration,
+                                decoration:
+                                    const InputDecoration(labelText: 'Clipboard clear duration (sec)'),
+                                items: const [10, 15, 30, 60]
+                                    .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
+                                    .toList(),
+                                onChanged: draft.clipboardClearEnabled
+                                    ? (value) => setState(
+                                          () => _draft =
+                                              draft.copyWith(clipboardClearDuration: value),
+                                        )
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Card(
+                        child: ListTile(
+                          title: const Text('Password Hint'),
+                          subtitle: Text(
+                            activeVault.passwordHint.isEmpty
+                                ? 'No hint set'
+                                : activeVault.passwordHint,
+                          ),
+                        ),
+                      ),
+                      Card(
+                        child: Column(
+                          children: [
+                            ListTile(
+                              title: const Text('Change master password'),
+                              trailing: FilledButton(
+                                onPressed: _showChangeMasterPasswordDialog,
+                                child: const Text('Change'),
+                              ),
+                            ),
+                            ListTile(
+                              title: const Text('Export active vault'),
+                              trailing: FilledButton(
+                                onPressed: () => _exportVault(activeVault),
+                                child: const Text('Export'),
+                              ),
+                            ),
+                            ListTile(
+                              title: const Text('Import vault file'),
+                              trailing: FilledButton(
+                                onPressed: () => _importVault(activeVault),
+                                child: const Text('Import'),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Security', style: Theme.of(context).textTheme.titleLarge),
-                      SwitchListTile(
-                        value: draft.biometricEnabled,
-                        title: const Text('Enable biometric unlock'),
-                        onChanged: (value) => setState(() => _draft = draft.copyWith(biometricEnabled: value)),
-                      ),
-                      DropdownButtonFormField<int>(
-                        initialValue: draft.autoLockTimeout,
-                        decoration: const InputDecoration(labelText: 'Auto-lock timeout (minutes)'),
-                        items: const [1, 3, 5, 10, 15]
-                            .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
-                            .toList(),
-                        onChanged: (value) => setState(() => _draft = draft.copyWith(autoLockTimeout: value)),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Clipboard', style: Theme.of(context).textTheme.titleLarge),
-                      SwitchListTile(
-                        value: draft.clipboardClearEnabled,
-                        title: const Text('Auto-clear clipboard'),
-                        onChanged: (value) => setState(() => _draft = draft.copyWith(clipboardClearEnabled: value)),
-                      ),
-                      DropdownButtonFormField<int>(
-                        initialValue: draft.clipboardClearDuration,
-                        decoration: const InputDecoration(labelText: 'Clipboard clear duration (sec)'),
-                        items: const [10, 15, 30, 60]
-                            .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
-                            .toList(),
-                        onChanged: draft.clipboardClearEnabled
-                            ? (value) => setState(() => _draft = draft.copyWith(clipboardClearDuration: value))
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Card(
-                child: ListTile(
-                  title: const Text('Password Hint'),
-                  subtitle: Text(activeVault.passwordHint.isEmpty ? 'No hint set' : activeVault.passwordHint),
-                ),
-              ),
-              Card(
-                child: Column(
+              SafeArea(
+                top: false,
+                minimum: const EdgeInsets.all(12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    ListTile(
-                      title: const Text('Change master password'),
-                      trailing: FilledButton(
-                        onPressed: _showChangeMasterPasswordDialog,
-                        child: const Text('Change'),
-                      ),
+                    OutlinedButton(
+                      onPressed: () => _discard(settings),
+                      child: const Text('Discard changes'),
                     ),
-                    ListTile(
-                      title: const Text('Export active vault'),
-                      trailing: FilledButton(
-                        onPressed: () => _exportVault(activeVault),
-                        child: const Text('Export'),
-                      ),
-                    ),
-                    ListTile(
-                      title: const Text('Import vault file'),
-                      trailing: FilledButton(
-                        onPressed: () => _importVault(activeVault),
-                        child: const Text('Import'),
-                      ),
+                    const SizedBox(width: 10),
+                    FilledButton(
+                      onPressed: _saving ? null : _apply,
+                      child: const Text('Apply'),
                     ),
                   ],
                 ),
               ),
-              ],
-            ),
+            ],
           );
         },
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.all(12),
-        child: Align(
-          alignment: Alignment.bottomRight,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              OutlinedButton(
-                onPressed: settingsState.valueOrNull == null
-                    ? null
-                    : () => _discard(settingsState.valueOrNull!),
-                child: const Text('Discard changes'),
-              ),
-              const SizedBox(width: 10),
-              FilledButton(
-                onPressed: _saving ? null : _apply,
-                child: const Text('Apply'),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -197,11 +212,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       await ref.read(exportVaultUseCaseProvider).call(vaultId: vault.id, targetPath: path);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vault exported.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Vault exported.')));
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Export failed.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Export failed.')));
     }
   }
 
@@ -234,11 +251,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             );
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Import complete.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Import complete.')));
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Import failed.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Import failed.')));
     }
   }
 
@@ -286,7 +305,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       controller: confirmController,
                       obscureText: true,
                       decoration: const InputDecoration(labelText: 'Confirm New Password'),
-                      validator: (value) => value != nextController.text ? 'Passwords do not match' : null,
+                      validator: (value) =>
+                          value != nextController.text ? 'Passwords do not match' : null,
                     ),
                   ],
                   TextFormField(
@@ -316,7 +336,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           }
                           final settings = ref.read(settingsControllerProvider).valueOrNull;
                           if (settings != null) {
-                            final updatedVault = settings.activeVault.copyWith(passwordHint: hintController.text.trim());
+                            final updatedVault =
+                                settings.activeVault.copyWith(passwordHint: hintController.text.trim());
                             await ref.read(settingsControllerProvider.notifier).upsertVault(updatedVault);
                           }
                           if (context.mounted) {
