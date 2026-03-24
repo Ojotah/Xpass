@@ -18,7 +18,8 @@ class XPassApp extends StatelessWidget {
       title: 'XPass',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color.fromARGB(255, 117, 37, 105)),
         useMaterial3: true,
       ),
       initialRoute: LockScreen.routeName,
