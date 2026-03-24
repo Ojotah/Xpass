@@ -27,6 +27,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   late final TextEditingController _titleController;
   late final TextEditingController _usernameController;
   late final TextEditingController _passwordController;
+  late final TextEditingController _noteController;
 
   bool _isSaving = false;
   bool _includeUppercase = true;
@@ -43,6 +44,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
         TextEditingController(text: widget.initialAccount?.username ?? '');
     _passwordController =
         TextEditingController(text: widget.initialAccount?.password ?? '');
+    _noteController = TextEditingController(text: widget.initialAccount?.note ?? '');
   }
 
   @override
@@ -50,6 +52,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
     _titleController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
@@ -64,6 +67,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
       title: _titleController.text.trim(),
       username: _usernameController.text.trim(),
       password: _passwordController.text,
+      note: _noteController.text.trim(),
     );
 
     final controller = ref.read(vaultControllerProvider.notifier);
@@ -143,6 +147,16 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                     decoration: const InputDecoration(labelText: 'Password'),
                     validator: (value) =>
                         (value == null || value.isEmpty) ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _noteController,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Note (optional)',
+                      alignLabelWithHint: true,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(

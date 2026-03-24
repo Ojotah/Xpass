@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'features/settings/domain/entities/app_settings.dart';
+import 'features/settings/domain/entities/app_vault.dart';
 import 'features/settings/presentation/providers/settings_providers.dart';
 import 'features/vault/presentation/providers/vault_providers.dart';
 import 'features/vault/presentation/screens/home_screen.dart';
 import 'features/vault/presentation/screens/lock_screen.dart';
 import 'features/vault/presentation/screens/setup_screen.dart';
+import 'features/vault_switching/presentation/screens/startup_vault_selection_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,16 +64,36 @@ class AppStartGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
-    final vaultExists = ref.watch(_vaultExistsProvider(settings.activeVaultId));
+    final existingVaults = ref.watch(_existingVaultsProvider(settings.vaults));
 
-    return vaultExists.when(
+    return existingVaults.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (_, __) => const Scaffold(body: Center(child: Text('Could not start app.'))),
-      data: (exists) => exists ? const LockScreen() : const SetupScreen(),
+      data: (vaults) {
+        if (vaults.isEmpty) {
+          return const SetupScreen();
+        }
+
+        if (vaults.length > 1) {
+          return StartupVaultSelectionScreen(vaults: vaults);
+        }
+
+        return const LockScreen();
+      },
     );
   }
 }
 
-final _vaultExistsProvider = FutureProvider.family<bool, String>((ref, vaultId) {
-  return ref.read(checkVaultExistsUseCaseProvider).call(vaultId);
+final _existingVaultsProvider = FutureProvider.family<List<AppVault>, List<AppVault>>((ref, vaults) async {
+  final useCase = ref.read(checkVaultExistsUseCaseProvider);
+  final existing = <AppVault>[];
+
+  for (final vault in vaults) {
+    final exists = await useCase.call(vault.id);
+    if (exists) {
+      existing.add(vault);
+    }
+  }
+
+  return existing;
 });

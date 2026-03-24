@@ -49,9 +49,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           final draft = _draft!;
           final activeVault = draft.activeVault;
 
-          return ListView(
+          return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
-            children: [
+            child: Column(
+              children: [
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(12),
@@ -156,7 +157,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ],
                 ),
               ),
-            ],
+              ],
+            ),
           );
         },
       ),

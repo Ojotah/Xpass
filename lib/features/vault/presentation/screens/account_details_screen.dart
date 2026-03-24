@@ -77,6 +77,10 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
                 const SizedBox(height: 12),
                 Text('Username: ${widget.account.username}'),
                 const SizedBox(height: 12),
+                if (widget.account.note.trim().isNotEmpty) ...[
+                  Text('Note: ${widget.account.note}'),
+                  const SizedBox(height: 12),
+                ],
                 Text(
                   'Password: ${_showPassword ? widget.account.password : '••••••••••'}',
                 ),

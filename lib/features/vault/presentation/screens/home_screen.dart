@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../vault_switching/presentation/screens/vault_selection_screen.dart';
-import '../../domain/entities/account_category.dart';
 import '../providers/vault_providers.dart';
 import 'account_details_screen.dart';
 import 'add_account_screen.dart';
@@ -35,8 +34,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final vaultState = ref.watch(vaultControllerProvider);
     final filteredAccounts = ref.watch(filteredAccountsProvider);
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final selectedCategory = ref.watch(selectedCategoryProvider);
-    final categoryCounts = ref.watch(categoryCountsProvider);
 
     return GestureDetector(
       onTap: () => ref.read(vaultControllerProvider.notifier).registerInteraction(),
@@ -82,6 +79,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Center(
+                    child: Text(
+                      settings?.activeVault.name ?? 'Vault Accounts',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.search),
@@ -90,25 +95,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
                   ),
                   const SizedBox(height: 8),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: AccountCategory.values.map((category) {
-                        final count = categoryCounts[category] ?? 0;
-                        final selected = selectedCategory == category;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: FilterChip(
-                            selected: selected,
-                            label: Text('${category.label} ($count)'),
-                            onSelected: (_) {
-                              ref.read(selectedCategoryProvider.notifier).state = category;
-                            },
-                          ),
-                        );
-                      }).toList(growable: false),
-                    ),
-                  ),
                   const SizedBox(height: 8),
                   Expanded(
                     child: data.accounts.isEmpty
@@ -118,12 +104,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             : AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 220),
                                 child: GridView.builder(
-                                  key: ValueKey('${selectedCategory.name}-${filteredAccounts.length}'),
+                                  key: ValueKey('accounts-grid-${filteredAccounts.length}'),
                                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 3,
                                     crossAxisSpacing: 10,
                                     mainAxisSpacing: 10,
-                                    childAspectRatio: 2.2,
+                                    childAspectRatio: 1.6,
                                   ),
                                   itemCount: filteredAccounts.length,
                                   itemBuilder: (context, index) {
@@ -144,30 +130,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         },
                                         child: Padding(
                                           padding: const EdgeInsets.all(12),
-                                          child: Row(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              const Icon(Icons.lock_person_outlined),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Column(
-                                                  mainAxisAlignment: MainAxisAlignment.center,
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.lock_person_outlined),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
                                                       account.title,
                                                       maxLines: 1,
                                                       overflow: TextOverflow.ellipsis,
-                                                      style: Theme.of(context).textTheme.titleSmall,
+                                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
                                                     ),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                      account.username,
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                      style: Theme.of(context).textTheme.bodySmall,
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                account.username,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context).textTheme.bodyLarge,
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                account.note.trim().isEmpty ? 'No note' : account.note,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                                                     ),
-                                                  ],
-                                                ),
                                               ),
                                             ],
                                           ),
