@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/utils/password_strength_validator.dart';
+import '../../../../core/widgets/top_right_notification.dart';
 import '../../../vault/presentation/providers/vault_providers.dart';
 import '../../domain/entities/app_settings.dart';
 import '../../domain/entities/app_vault.dart';
@@ -19,6 +20,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   AppSettings? _draft;
   bool _saving = false;
+  bool _checkingBreaches = false;
 
   Future<void> _apply() async {
     final draft = _draft;
@@ -27,7 +29,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await ref.read(settingsControllerProvider.notifier).saveSettings(draft);
     if (!mounted) return;
     setState(() => _saving = false);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Applied.')));
+    TopRightNotification.show(
+      context,
+      message: 'Settings applied.',
+      type: TopRightNotificationType.success,
+    );
   }
 
   void _discard(AppSettings settings) {
@@ -48,11 +54,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           final draft = _draft!;
           final activeVault = draft.activeVault;
 
-          return Column(
+          return Stack(
             children: [
-              Expanded(
+              Positioned.fill(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 92),
                   child: Column(
                     children: [
                       Card(
@@ -170,6 +176,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 child: const Text('Import'),
                               ),
                             ),
+                            ListTile(
+                              title: const Text('Check for breaches'),
+                              subtitle: Text(
+                                draft.lastBreachCheck == null
+                                    ? 'Never checked'
+                                    : 'Last checked: ${draft.lastBreachCheck!.toLocal()}',
+                              ),
+                              trailing: FilledButton.icon(
+                                onPressed: _checkingBreaches ? null : _checkForBreaches,
+                                icon: _checkingBreaches
+                                    ? const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : const Icon(Icons.shield_outlined),
+                                label: Text(_checkingBreaches ? 'Checking...' : 'Check'),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -177,22 +202,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
               ),
-              SafeArea(
-                top: false,
-                minimum: const EdgeInsets.all(12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => _discard(settings),
-                      child: const Text('Discard changes'),
-                    ),
-                    const SizedBox(width: 10),
-                    FilledButton(
-                      onPressed: _saving ? null : _apply,
-                      child: const Text('Apply'),
-                    ),
-                  ],
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => _discard(settings),
+                        child: const Text('Discard changes'),
+                      ),
+                      const SizedBox(width: 10),
+                      FilledButton(
+                        onPressed: _saving ? null : _apply,
+                        child: const Text('Apply'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -200,6 +228,54 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         },
       ),
     );
+  }
+
+
+  Future<void> _checkForBreaches() async {
+    setState(() => _checkingBreaches = true);
+
+    try {
+      final compromisedCount =
+          await ref.read(vaultControllerProvider.notifier).runBreachScan();
+      if (!mounted) return;
+
+      final refreshed = ref.read(settingsControllerProvider).valueOrNull;
+      if (refreshed != null) {
+        setState(() => _draft = refreshed);
+      }
+
+      if (compromisedCount < 0) {
+        TopRightNotification.show(
+          context,
+          message: 'Breach check failed. Please try again later.',
+          type: TopRightNotificationType.error,
+        );
+      } else if (compromisedCount > 0) {
+        TopRightNotification.show(
+          context,
+          message: 'Breach check complete: $compromisedCount compromised account(s) found.',
+          type: TopRightNotificationType.warning,
+          duration: const Duration(seconds: 4),
+        );
+      } else {
+        TopRightNotification.show(
+          context,
+          message: 'No compromised passwords found in this vault.',
+          type: TopRightNotificationType.success,
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      TopRightNotification.show(
+        context,
+        message: 'Breach check failed. Please try again.',
+        type: TopRightNotificationType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _checkingBreaches = false);
+      }
+    }
   }
 
   Future<void> _exportVault(AppVault vault) async {
@@ -212,13 +288,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       await ref.read(exportVaultUseCaseProvider).call(vaultId: vault.id, targetPath: path);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Vault exported.')));
+        TopRightNotification.show(
+          context,
+          message: 'Vault exported successfully.',
+          type: TopRightNotificationType.success,
+        );
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Export failed.')));
+      TopRightNotification.show(
+        context,
+        message: 'Vault export failed.',
+        type: TopRightNotificationType.error,
+      );
     }
   }
 
@@ -251,13 +333,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             );
       }
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Import complete.')));
+        TopRightNotification.show(
+          context,
+          message: 'Vault import complete.',
+          type: TopRightNotificationType.success,
+        );
       }
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Import failed.')));
+      TopRightNotification.show(
+        context,
+        message: 'Vault import failed.',
+        type: TopRightNotificationType.error,
+      );
     }
   }
 

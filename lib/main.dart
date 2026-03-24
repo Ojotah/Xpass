@@ -74,11 +74,7 @@ class AppStartGate extends ConsumerWidget {
           return const SetupScreen();
         }
 
-        if (vaults.length > 1) {
-          return StartupVaultSelectionScreen(vaults: vaults);
-        }
-
-        return const LockScreen();
+        return StartupVaultSelectionScreen(vaults: vaults);
       },
     );
   }

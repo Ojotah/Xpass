@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../security/presentation/providers/security_providers.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
+import '../../../vault_switching/presentation/screens/startup_vault_selection_screen.dart';
 import '../providers/vault_providers.dart';
 import 'home_screen.dart';
 
@@ -84,6 +85,23 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     }
   }
 
+  Future<void> _chooseAnotherVault() async {
+    _passwordController.clear();
+    final settings = ref.read(settingsControllerProvider).valueOrNull;
+    if (settings == null) {
+      return;
+    }
+
+    await ref.read(vaultControllerProvider.notifier).switchVault();
+
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => StartupVaultSelectionScreen(vaults: settings.vaults),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final vaultState = ref.watch(vaultControllerProvider);
@@ -132,6 +150,12 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Text('Unlock'),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: isBusy ? null : _chooseAnotherVault,
+                  icon: const Icon(Icons.swap_horiz),
+                  label: const Text('Choose another vault'),
                 ),
               ],
             ),

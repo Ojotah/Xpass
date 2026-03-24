@@ -76,7 +76,28 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
                 Text(widget.account.title, style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 12),
                 Text('Username: ${widget.account.username}'),
+                const SizedBox(height: 8),
+                Text('Risk score: ${widget.account.riskScore}/100'),
                 const SizedBox(height: 12),
+
+                if (widget.account.isCompromised) ...[
+                  Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This password appears in known breach datasets. Change it soon.',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: Theme.of(context).colorScheme.error),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 if (widget.account.note.trim().isNotEmpty) ...[
                   Text('Note: ${widget.account.note}'),
                   const SizedBox(height: 12),

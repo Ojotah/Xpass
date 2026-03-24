@@ -41,7 +41,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       behavior: HitTestBehavior.translucent,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(settings?.activeVault.name ?? 'Vault Accounts'),
+          title: const Text('Vault Accounts'),
           actions: [
             IconButton(
               tooltip: 'Vaults',
@@ -82,7 +82,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Center(
                     child: Text(
                       settings?.activeVault.name ?? 'Vault Accounts',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -94,8 +96,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
                   ),
-                  const SizedBox(height: 8),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Expanded(
                     child: data.accounts.isEmpty
                         ? const Center(child: Text('No accounts yet. Add your first account.'))
@@ -109,12 +110,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     crossAxisCount: 3,
                                     crossAxisSpacing: 10,
                                     mainAxisSpacing: 10,
-                                    childAspectRatio: 1.6,
+                                    childAspectRatio: 1.85,
                                   ),
                                   itemCount: filteredAccounts.length,
                                   itemBuilder: (context, index) {
                                     final account = filteredAccounts[index];
                                     final originalIndex = data.accounts.indexOf(account);
+                                    final riskColor = _riskColor(context, account.riskScore);
+
                                     return Card(
                                       clipBehavior: Clip.antiAlias,
                                       child: InkWell(
@@ -129,41 +132,74 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           );
                                         },
                                         child: Padding(
-                                          padding: const EdgeInsets.all(12),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 8,
+                                          ),
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Row(
                                                 children: [
-                                                  const Icon(Icons.lock_person_outlined),
-                                                  const SizedBox(width: 8),
                                                   Expanded(
                                                     child: Text(
                                                       account.title,
                                                       maxLines: 1,
                                                       overflow: TextOverflow.ellipsis,
-                                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                            fontWeight: FontWeight.bold,
-                                                          ),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleLarge
+                                                          ?.copyWith(fontWeight: FontWeight.w800),
                                                     ),
+                                                  ),
+                                                  Icon(
+                                                    Icons.shield,
+                                                    size: 18,
+                                                    color: riskColor,
                                                   ),
                                                 ],
                                               ),
-                                              const SizedBox(height: 8),
+                                              const SizedBox(height: 6),
+                                              LinearProgressIndicator(
+                                                value: account.riskScore / 100,
+                                                minHeight: 4,
+                                                color: riskColor,
+                                                backgroundColor:
+                                                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                                              ),
+                                              const SizedBox(height: 6),
                                               Text(
                                                 account.username,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: Theme.of(context).textTheme.bodyLarge,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium
+                                                    ?.copyWith(fontWeight: FontWeight.w600),
                                               ),
-                                              const SizedBox(height: 8),
+                                              const SizedBox(height: 6),
                                               Text(
                                                 account.note.trim().isEmpty ? 'No note' : account.note,
                                                 maxLines: 2,
                                                 overflow: TextOverflow.ellipsis,
                                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
                                                     ),
+                                              ),
+                                              const Spacer(),
+                                              Wrap(
+                                                spacing: 4,
+                                                runSpacing: 2,
+                                                children: [
+                                                  if (account.isCompromised)
+                                                    _riskBadge(context, 'Leaked', Colors.red.shade700),
+                                                  if (account.isWeak)
+                                                    _riskBadge(context, 'Weak', Colors.orange.shade700),
+                                                  if (account.isReused)
+                                                    _riskBadge(context, 'Reused', Colors.amber.shade800),
+                                                ],
                                               ),
                                             ],
                                           ),
@@ -187,6 +223,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           },
           child: const Icon(Icons.add),
         ),
+      ),
+    );
+  }
+
+  Color _riskColor(BuildContext context, int riskScore) {
+    if (riskScore >= 70) {
+      return Theme.of(context).colorScheme.error;
+    }
+    if (riskScore >= 30) {
+      return Colors.orange;
+    }
+    return Colors.green;
+  }
+
+  Widget _riskBadge(BuildContext context, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.45)),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
       ),
     );
   }
