@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:cryptography/cryptography.dart';
 
@@ -6,22 +7,22 @@ import '../error/exceptions.dart';
 import 'encryption_service.dart';
 
 class AesEncryptionService implements EncryptionService {
-  const AesEncryptionService({
+  AesEncryptionService({
     AesGcm? algorithm,
     Pbkdf2? pbkdf2,
-    Random? random,
   })  : _algorithm = algorithm ?? AesGcm.with256bits(),
         _pbkdf2 = pbkdf2 ??
             Pbkdf2(
               macAlgorithm: Hmac.sha256(),
               iterations: 120000,
               bits: 256,
-            ),
-        _random = random ?? Cryptography.instance;
+            );
 
   final AesGcm _algorithm;
   final Pbkdf2 _pbkdf2;
-  final Random _random;
+
+  /// Use Dart's secure random
+  final _secureRandom = Random.secure();
 
   @override
   Future<String> encrypt(String plainText, String password) async {
@@ -29,8 +30,9 @@ class AesEncryptionService implements EncryptionService {
       throw const WrongPasswordException('Master password is required.');
     }
 
-    final salt = _random.nextBytes(16);
-    final nonce = _random.nextBytes(12);
+    final salt = _generateBytes(16);
+    final nonce = _generateBytes(12);
+
     final key = await _deriveKey(password, salt);
 
     final secretBox = await _algorithm.encrypt(
@@ -60,28 +62,27 @@ class AesEncryptionService implements EncryptionService {
     }
 
     try {
-      final decodedEnvelope = utf8.decode(base64Decode(cipherText));
-      final payload = jsonDecode(decodedEnvelope) as Map<String, dynamic>;
+      final decoded = utf8.decode(base64Decode(cipherText));
+      final payload = jsonDecode(decoded) as Map<String, dynamic>;
 
-      final salt = base64Decode(payload['salt'] as String);
-      final nonce = base64Decode(payload['nonce'] as String);
-      final encryptedBytes = base64Decode(payload['ct'] as String);
-      final mac = Mac(base64Decode(payload['mac'] as String));
+      final salt = base64Decode(payload['salt']);
+      final nonce = base64Decode(payload['nonce']);
+      final cipher = base64Decode(payload['ct']);
+      final mac = Mac(base64Decode(payload['mac']));
 
       final key = await _deriveKey(password, salt);
-      final clearBytes = await _algorithm.decrypt(
-        SecretBox(encryptedBytes, nonce: nonce, mac: mac),
+
+      final clear = await _algorithm.decrypt(
+        SecretBox(cipher, nonce: nonce, mac: mac),
         secretKey: key,
       );
 
-      return utf8.decode(clearBytes);
+      return utf8.decode(clear);
     } on SecretBoxAuthenticationError {
       throw const WrongPasswordException('Wrong master password.');
-    } on WrongPasswordException {
-      rethrow;
     } catch (_) {
       throw const FileCorruptedException(
-        'Vault file is corrupted or unsupported.',
+        'Vault file is corrupted or invalid.',
       );
     }
   }
@@ -90,6 +91,14 @@ class AesEncryptionService implements EncryptionService {
     return _pbkdf2.deriveKeyFromPassword(
       password: password,
       nonce: salt,
+    );
+  }
+
+  /// Secure random bytes generator
+  List<int> _generateBytes(int length) {
+    return List<int>.generate(
+      length,
+      (_) => _secureRandom.nextInt(256),
     );
   }
 }

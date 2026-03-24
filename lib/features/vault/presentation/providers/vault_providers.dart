@@ -9,7 +9,7 @@ import '../../domain/usecases/save_vault.dart';
 import '../../domain/usecases/unlock_vault.dart';
 
 final encryptionServiceProvider = Provider<EncryptionService>((ref) {
-  return const AesEncryptionService();
+  return AesEncryptionService();
 });
 
 final vaultRepositoryProvider = Provider<VaultRepository>((ref) {
@@ -61,7 +61,8 @@ class VaultController extends AsyncNotifier<VaultState> {
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(() async {
-      final accounts = await ref.read(unlockVaultUseCaseProvider).call(password);
+      final accounts =
+          await ref.read(unlockVaultUseCaseProvider).call(password);
 
       // Password is kept in-memory only for the active unlocked session.
       _sessionPassword = password;
@@ -83,7 +84,9 @@ class VaultController extends AsyncNotifier<VaultState> {
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(() async {
-      await ref.read(saveVaultUseCaseProvider).call(nextAccounts, _sessionPassword!);
+      await ref
+          .read(saveVaultUseCaseProvider)
+          .call(nextAccounts, _sessionPassword!);
       return current.copyWith(accounts: nextAccounts, clearError: true);
     });
   }
