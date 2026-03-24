@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/account.dart';
+import '../../../settings/domain/entities/app_settings.dart';
+import '../../../settings/presentation/providers/settings_providers.dart';
 import '../providers/vault_providers.dart';
 import 'add_account_screen.dart';
 
@@ -25,8 +27,12 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
   Future<void> _copyPassword() async {
     await ref.read(copyToClipboardUseCaseProvider).call(
           widget.account.password,
-          autoClear: ref.read(autoClearClipboardProvider),
-          clearAfter: const Duration(seconds: 15),
+          autoClear: (ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults)
+              .clipboardClearEnabled,
+          clearAfter: Duration(
+            seconds: (ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults)
+                .clipboardClearDuration,
+          ),
         );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

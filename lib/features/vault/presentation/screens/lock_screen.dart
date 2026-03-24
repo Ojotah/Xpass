@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/exceptions.dart';
+import '../../../settings/presentation/providers/settings_providers.dart';
 import '../providers/vault_providers.dart';
 import 'home_screen.dart';
 
 class LockScreen extends ConsumerStatefulWidget {
   const LockScreen({super.key});
 
-  static const routeName = '/';
+  static const routeName = '/lock';
 
   @override
   ConsumerState<LockScreen> createState() => _LockScreenState();
@@ -55,6 +56,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   Widget build(BuildContext context) {
     final vaultState = ref.watch(vaultControllerProvider);
     final isBusy = vaultState.isLoading;
+    final passwordHint =
+        ref.watch(settingsControllerProvider).valueOrNull?.passwordHint.trim() ?? '';
 
     return Scaffold(
       body: Center(
@@ -81,6 +84,13 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   ),
                   onSubmitted: (_) => _unlock(),
                 ),
+                if (passwordHint.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Hint: $passwordHint',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: isBusy ? null : _unlock,

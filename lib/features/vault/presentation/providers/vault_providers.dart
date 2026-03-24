@@ -6,12 +6,17 @@ import '../../../../core/security/aes_encryption_service.dart';
 import '../../../../core/security/encryption_service.dart';
 import '../../../../core/utils/clipboard_manager.dart';
 import '../../../../core/utils/password_generator.dart';
+import '../../../settings/domain/entities/app_settings.dart';
+import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../data/repositories/local_vault_repository.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/repositories/vault_repository.dart';
+import '../../domain/usecases/change_master_password.dart';
+import '../../domain/usecases/check_vault_exists.dart';
 import '../../domain/usecases/copy_to_clipboard.dart';
 import '../../domain/usecases/delete_account.dart';
 import '../../domain/usecases/generate_password.dart';
+import '../../domain/usecases/initialize_vault.dart';
 import '../../domain/usecases/save_vault.dart';
 import '../../domain/usecases/search_accounts.dart';
 import '../../domain/usecases/unlock_vault.dart';
@@ -25,12 +30,24 @@ final vaultRepositoryProvider = Provider<VaultRepository>((ref) {
   return LocalVaultRepository(ref.watch(encryptionServiceProvider));
 });
 
+final checkVaultExistsUseCaseProvider = Provider<CheckVaultExists>((ref) {
+  return CheckVaultExists(ref.watch(vaultRepositoryProvider));
+});
+
+final initializeVaultUseCaseProvider = Provider<InitializeVault>((ref) {
+  return InitializeVault(ref.watch(vaultRepositoryProvider));
+});
+
 final unlockVaultUseCaseProvider = Provider<UnlockVault>((ref) {
   return UnlockVault(ref.watch(vaultRepositoryProvider));
 });
 
 final saveVaultUseCaseProvider = Provider<SaveVault>((ref) {
   return SaveVault(ref.watch(vaultRepositoryProvider));
+});
+
+final changeMasterPasswordUseCaseProvider = Provider<ChangeMasterPassword>((ref) {
+  return ChangeMasterPassword(ref.watch(vaultRepositoryProvider));
 });
 
 final passwordGeneratorProvider = Provider<PasswordGenerator>((ref) {
@@ -64,8 +81,6 @@ final updateAccountUseCaseProvider = Provider<UpdateAccount>((ref) {
 });
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
-final autoClearClipboardProvider = StateProvider<bool>((ref) => true);
-final autoLockMinutesProvider = StateProvider<int>((ref) => 3);
 
 final filteredAccountsProvider = Provider<List<Account>>((ref) {
   final accounts = ref.watch(
@@ -129,6 +144,13 @@ class VaultController extends AsyncNotifier<VaultState> {
     });
   }
 
+  Future<void> initialize(String password) async {
+    await ref.read(initializeVaultUseCaseProvider).call(masterPassword: password);
+    _sessionPassword = password;
+    state = const AsyncData(VaultState(isUnlocked: true, accounts: []));
+    _startInactivityTimer();
+  }
+
   Future<void> addAccount(Account account) async {
     final current = state.valueOrNull;
     if (current == null || !current.isUnlocked || _sessionPassword == null) {
@@ -160,6 +182,19 @@ class VaultController extends AsyncNotifier<VaultState> {
     await _saveAndUpdateState(current, nextAccounts);
   }
 
+  Future<void> changeMasterPassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await ref.read(changeMasterPasswordUseCaseProvider).call(
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
+
+    _sessionPassword = newPassword;
+    _startInactivityTimer();
+  }
+
   void registerInteraction() {
     final current = state.valueOrNull;
     if (current?.isUnlocked ?? false) {
@@ -188,7 +223,8 @@ class VaultController extends AsyncNotifier<VaultState> {
 
   void _startInactivityTimer() {
     _autoLockTimer?.cancel();
-    final minutes = ref.read(autoLockMinutesProvider);
+    final settings = ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
+    final minutes = settings.autoLockTimeout;
     if (minutes <= 0) {
       return;
     }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../settings/presentation/providers/settings_providers.dart';
+import '../../../settings/presentation/screens/settings_screen.dart';
 import '../providers/vault_providers.dart';
 import '../widgets/account_list_tile.dart';
 import 'account_details_screen.dart';
@@ -52,8 +54,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
     final vaultState = ref.watch(vaultControllerProvider);
     final filteredAccounts = ref.watch(filteredAccountsProvider);
-    final autoClear = ref.watch(autoClearClipboardProvider);
-    final autoLockMinutes = ref.watch(autoLockMinutesProvider);
+    final settings = ref.watch(settingsControllerProvider).valueOrNull;
 
     return GestureDetector(
       onTap: () => ref.read(vaultControllerProvider.notifier).registerInteraction(),
@@ -61,8 +62,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       behavior: HitTestBehavior.translucent,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Vault Accounts'),
+          title: Text(settings?.vaultName ?? 'Vault Accounts'),
           actions: [
+            IconButton(
+              tooltip: 'Settings',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+                );
+              },
+              icon: const Icon(Icons.settings_outlined),
+            ),
             IconButton(
               tooltip: 'Lock Vault',
               onPressed: () => ref.read(vaultControllerProvider.notifier).lock(),
@@ -87,40 +97,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     ),
                     onChanged: (value) =>
                         ref.read(searchQueryProvider.notifier).state = value,
-                  ),
-                  const SizedBox(height: 8),
-                  Card(
-                    child: Column(
-                      children: [
-                        SwitchListTile(
-                          value: autoClear,
-                          title: const Text('Auto-clear clipboard'),
-                          subtitle: const Text('Clears copied secrets after 15 seconds'),
-                          onChanged: (value) =>
-                              ref.read(autoClearClipboardProvider.notifier).state = value,
-                        ),
-                        ListTile(
-                          title: const Text('Auto-lock timeout'),
-                          subtitle: Text('$autoLockMinutes minutes of inactivity'),
-                          trailing: DropdownButton<int>(
-                            value: autoLockMinutes,
-                            onChanged: (value) {
-                              if (value == null) return;
-                              ref.read(autoLockMinutesProvider.notifier).state = value;
-                              ref.read(vaultControllerProvider.notifier).registerInteraction();
-                            },
-                            items: const [1, 3, 5, 10]
-                                .map(
-                                  (minute) => DropdownMenuItem<int>(
-                                    value: minute,
-                                    child: Text('$minute min'),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
