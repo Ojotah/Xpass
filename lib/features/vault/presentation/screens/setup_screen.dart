@@ -49,7 +49,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
     try {
       await ref.read(vaultControllerProvider.notifier).initialize(password);
-      await ref.read(settingsControllerProvider.notifier).update(settings);
+      await ref.read(settingsControllerProvider.notifier).saveSettings(settings);
 
       if (!mounted) {
         return;

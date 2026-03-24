@@ -104,8 +104,8 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
                             ),
                           ),
                         );
-                        if (!mounted) return;
-                        Navigator.pop(context);
+                        if (!context.mounted) return;
+                        Navigator.of(context).pop();
                       },
                       icon: const Icon(Icons.edit),
                       label: const Text('Edit'),

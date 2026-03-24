@@ -19,7 +19,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _save(AppSettings settings) async {
     setState(() => _saving = true);
-    await ref.read(settingsControllerProvider.notifier).update(settings);
+    await ref.read(settingsControllerProvider.notifier).saveSettings(settings);
     if (mounted) {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context)
@@ -184,7 +184,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       Text('Security', style: Theme.of(context).textTheme.titleLarge),
                       DropdownButtonFormField<int>(
-                        value: settings.autoLockTimeout,
+                        initialValue: settings.autoLockTimeout,
                         decoration: const InputDecoration(labelText: 'Auto-lock timeout (minutes)'),
                         items: const [1, 3, 5, 10, 15]
                             .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
@@ -202,7 +202,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         },
                       ),
                       DropdownButtonFormField<int>(
-                        value: settings.clipboardClearDuration,
+                        initialValue: settings.clipboardClearDuration,
                         decoration: const InputDecoration(labelText: 'Clipboard clear duration (sec)'),
                         items: const [10, 15, 30, 60]
                             .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
