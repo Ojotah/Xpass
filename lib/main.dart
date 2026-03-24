@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/error/error_handler.dart';
+import 'core/logging/app_logger.dart';
 import 'features/settings/domain/entities/app_settings.dart';
 import 'features/settings/domain/entities/app_vault.dart';
 import 'features/settings/presentation/providers/settings_providers.dart';
@@ -12,7 +16,21 @@ import 'features/vault_switching/presentation/screens/startup_vault_selection_sc
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: XPassApp()));
+  FlutterError.onError = ErrorHandler.handleFlutterError;
+
+  runZonedGuarded(
+    () {
+      runApp(const ProviderScope(child: XPassApp()));
+    },
+    (error, stackTrace) {
+      AppLogger.error(
+        'Unhandled zone error',
+        error: error,
+        stackTrace: stackTrace,
+        scope: 'fatal',
+      );
+    },
+  );
 }
 
 class XPassApp extends ConsumerStatefulWidget {
@@ -30,7 +48,7 @@ class _XPassAppState extends ConsumerState<XPassApp> {
     return Listener(
       onPointerDown: (_) => ref.read(vaultControllerProvider.notifier).registerInteraction(),
       child: MaterialApp(
-        title: 'XPass',
+        title: 'XPass Vault',
         debugShowCheckedModeBanner: false,
         themeMode: settings.themeMode,
         theme: ThemeData(
@@ -67,7 +85,7 @@ class AppStartGate extends ConsumerWidget {
     final existingVaults = ref.watch(_existingVaultsProvider(settings.vaults));
 
     return existingVaults.when(
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => const _SplashScreen(),
       error: (_, __) => const Scaffold(body: Center(child: Text('Could not start app.'))),
       data: (vaults) {
         if (vaults.isEmpty) {
@@ -76,6 +94,28 @@ class AppStartGate extends ConsumerWidget {
 
         return StartupVaultSelectionScreen(vaults: vaults);
       },
+    );
+  }
+}
+
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.lock_outline_rounded, size: 56),
+            SizedBox(height: 12),
+            Text('XPass Vault'),
+            SizedBox(height: 16),
+            CircularProgressIndicator(),
+          ],
+        ),
+      ),
     );
   }
 }

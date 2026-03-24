@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/error/exceptions.dart';
+import '../../../../core/error/error_handler.dart';
 import '../../../security/presentation/providers/security_providers.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../../vault_switching/presentation/screens/startup_vault_selection_screen.dart';
@@ -63,12 +63,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     final nextState = ref.read(vaultControllerProvider);
     if (nextState.hasError) {
       final error = nextState.error;
-      final message = switch (error) {
-        WrongPasswordException() => 'Wrong master password.',
-        FileCorruptedException() => 'Vault file is corrupted.',
-        VaultException() => error.message,
-        _ => 'Unable to unlock vault.',
-      };
+      final message = error == null ? 'Unable to unlock vault.' : ErrorHandler.toUserMessage(error);
 
       setState(() => _failedAttempts += 1);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));

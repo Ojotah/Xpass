@@ -7,11 +7,16 @@ project(runner LANGUAGES CXX)
 set(BINARY_NAME "xpass")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "com.example.xpass")
+set(APPLICATION_ID "com.xpass.vault")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
 cmake_policy(SET CMP0063 NEW)
+
+# Branding and desktop metadata.
+set(APPLICATION_DISPLAY_NAME "XPass Vault")
+set(APPLICATION_ICON_NAME "xpass")
+set(APPLICATION_DESKTOP_FILE "xpass.desktop")
 
 # Load bundled libraries from the lib/ directory relative to the binary.
 set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
@@ -120,6 +125,11 @@ install(CODE "
   " COMPONENT Runtime)
 install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
+
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/packaging/${APPLICATION_DESKTOP_FILE}"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}" COMPONENT Runtime)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/xpass_icon.png"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}" RENAME "${APPLICATION_ICON_NAME}.png" COMPONENT Runtime)
 
 # Install the AOT library on non-Debug builds only.
 if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")

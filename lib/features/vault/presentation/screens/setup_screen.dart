@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/error/error_handler.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/utils/password_strength_validator.dart';
 import '../../../settings/domain/entities/app_settings.dart';
@@ -135,12 +136,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     } on WrongPasswordException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Invalid password for imported vault.')),
+        const SnackBar(content: Text('Incorrect password')),
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Import failed.')),
+        const SnackBar(content: Text('Unable to load vault')),
       );
     } finally {
       if (mounted) {

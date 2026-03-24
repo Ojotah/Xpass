@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/config/app_config.dart';
+import '../../../../core/error/error_handler.dart';
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/security/aes_encryption_service.dart';
 import '../../../../core/security/breach_cache.dart';
 import '../../../../core/security/breach_checker.dart';
@@ -99,7 +102,7 @@ final breachCacheProvider = Provider<BreachCache>((ref) {
 });
 
 final breachCheckerProvider = Provider<BreachChecker>((ref) {
-  return KAnonymityBreachChecker();
+  return KAnonymityBreachChecker(endpointBase: AppConfig.breachApiBaseUrl);
 });
 
 final checkPasswordBreachUseCaseProvider = Provider<CheckPasswordBreach>((ref) {
@@ -223,8 +226,11 @@ class VaultController extends AsyncNotifier<VaultState> {
       _sessionPassword = password;
       _startInactivityTimer();
       final localRiskAccounts = _applyLocalRiskSignals(accounts);
-      unawaited(_runBreachScanIfNeeded(force: false));
+      if (AppConfig.breachDetectionEnabled) {
+        unawaited(_runBreachScanIfNeeded(force: false));
+      }
 
+      AppLogger.event('Vault unlocked successfully.', scope: 'vault');
       return VaultState(
         isUnlocked: true,
         accounts: localRiskAccounts,
@@ -236,6 +242,7 @@ class VaultController extends AsyncNotifier<VaultState> {
     await ref
         .read(initializeVaultUseCaseProvider)
         .call(vaultId: _activeVaultId, masterPassword: password);
+    AppLogger.event('Vault initialized.', scope: 'vault');
     _sessionPassword = password;
     state = const AsyncData(VaultState(isUnlocked: true, accounts: []));
     _startInactivityTimer();
@@ -310,6 +317,7 @@ class VaultController extends AsyncNotifier<VaultState> {
   void lock() {
     _autoLockTimer?.cancel();
     _sessionPassword = null;
+    AppLogger.event('Vault locked and in-memory key cleared.', scope: 'vault');
     state = const AsyncData(VaultState.locked);
   }
 
@@ -372,7 +380,8 @@ class VaultController extends AsyncNotifier<VaultState> {
       state = AsyncData(current.copyWith(accounts: securedAccounts, clearError: true));
       await ref.read(settingsControllerProvider.notifier).updateLastBreachCheck(now);
       return compromisedCount;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      ErrorHandler.logRecoverable('Breach scan failed.', error, stackTrace);
       return -1;
     } finally {
       _isBreachCheckRunning = false;

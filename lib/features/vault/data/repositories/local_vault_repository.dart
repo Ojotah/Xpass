@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/logging/app_logger.dart';
 import '../../../../core/security/encryption_service.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/repositories/vault_repository.dart';
@@ -38,23 +39,33 @@ class LocalVaultRepository implements VaultRepository {
     required String vaultId,
     required String masterPassword,
   }) async {
-    final file = await _resolveVaultFile(vaultId);
+    try {
+      final file = await _resolveVaultFile(vaultId);
 
-    if (!await file.exists()) {
-      throw const VaultException('Vault is not initialized.');
+      if (!await file.exists()) {
+        throw const VaultException('Vault is not initialized.');
+      }
+
+      final encryptedPayload = await file.readAsString();
+      if (encryptedPayload.trim().isEmpty) {
+        throw const FileCorruptedException('Vault file is empty.');
+      }
+
+      final decrypted = await _encryptionService.decrypt(
+        encryptedPayload,
+        masterPassword,
+      );
+
+      return _deserializeAccounts(decrypted);
+    } on FileSystemException catch (error, stackTrace) {
+      AppLogger.error(
+        'File read failure while unlocking vault.',
+        error: error,
+        stackTrace: stackTrace,
+        scope: 'vault-repo',
+      );
+      throw const VaultException('Unable to load vault.');
     }
-
-    final encryptedPayload = await file.readAsString();
-    if (encryptedPayload.trim().isEmpty) {
-      throw const FileCorruptedException('Vault file is empty.');
-    }
-
-    final decrypted = await _encryptionService.decrypt(
-      encryptedPayload,
-      masterPassword,
-    );
-
-    return _deserializeAccounts(decrypted);
   }
 
   @override
@@ -63,8 +74,18 @@ class LocalVaultRepository implements VaultRepository {
     required List<Account> accounts,
     required String masterPassword,
   }) async {
-    final file = await _resolveVaultFile(vaultId);
-    await _writeEncryptedVault(file, accounts, masterPassword);
+    try {
+      final file = await _resolveVaultFile(vaultId);
+      await _writeEncryptedVault(file, accounts, masterPassword);
+    } on FileSystemException catch (error, stackTrace) {
+      AppLogger.error(
+        'File write failure while saving vault.',
+        error: error,
+        stackTrace: stackTrace,
+        scope: 'vault-repo',
+      );
+      throw const VaultException('Unable to save vault.');
+    }
   }
 
   @override
