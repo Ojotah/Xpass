@@ -116,15 +116,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   itemBuilder: (context, index) {
                                     final account = filteredAccounts[index];
                                     final originalIndex = data.accounts.indexOf(account);
-                                    final cardColor = account.isCompromised
-                                        ? Theme.of(context)
-                                            .colorScheme
-                                            .errorContainer
-                                            .withOpacity(0.45)
-                                        : null;
+                                    final riskColor = _riskColor(context, account.riskScore);
 
                                     return Card(
-                                      color: cardColor,
                                       clipBehavior: Clip.antiAlias,
                                       child: InkWell(
                                         onTap: () {
@@ -158,17 +152,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                           ?.copyWith(fontWeight: FontWeight.w800),
                                                     ),
                                                   ),
-                                                  if (account.isCompromised)
-                                                    Tooltip(
-                                                      message: 'Password appears in known breaches',
-                                                      child: Icon(
-                                                        Icons.warning_amber_rounded,
-                                                        color: Theme.of(context).colorScheme.error,
-                                                      ),
-                                                    ),
+                                                  Icon(
+                                                    Icons.shield,
+                                                    size: 18,
+                                                    color: riskColor,
+                                                  ),
                                                 ],
                                               ),
-                                              const SizedBox(height: 8),
+                                              const SizedBox(height: 6),
+                                              LinearProgressIndicator(
+                                                value: account.riskScore / 100,
+                                                minHeight: 4,
+                                                color: riskColor,
+                                                backgroundColor:
+                                                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                                              ),
+                                              const SizedBox(height: 6),
                                               Text(
                                                 account.username,
                                                 maxLines: 1,
@@ -178,7 +177,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                     .titleMedium
                                                     ?.copyWith(fontWeight: FontWeight.w600),
                                               ),
-                                              const SizedBox(height: 8),
+                                              const SizedBox(height: 6),
                                               Text(
                                                 account.note.trim().isEmpty ? 'No note' : account.note,
                                                 maxLines: 2,
@@ -188,6 +187,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                           .colorScheme
                                                           .onSurfaceVariant,
                                                     ),
+                                              ),
+                                              const Spacer(),
+                                              Wrap(
+                                                spacing: 4,
+                                                runSpacing: 2,
+                                                children: [
+                                                  if (account.isCompromised)
+                                                    _riskBadge(context, 'Leaked', Colors.red.shade700),
+                                                  if (account.isWeak)
+                                                    _riskBadge(context, 'Weak', Colors.orange.shade700),
+                                                  if (account.isReused)
+                                                    _riskBadge(context, 'Reused', Colors.amber.shade800),
+                                                ],
                                               ),
                                             ],
                                           ),
@@ -211,6 +223,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           },
           child: const Icon(Icons.add),
         ),
+      ),
+    );
+  }
+
+  Color _riskColor(BuildContext context, int riskScore) {
+    if (riskScore >= 70) {
+      return Theme.of(context).colorScheme.error;
+    }
+    if (riskScore >= 30) {
+      return Colors.orange;
+    }
+    return Colors.green;
+  }
+
+  Widget _riskBadge(BuildContext context, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.45)),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
       ),
     );
   }

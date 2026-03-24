@@ -7,6 +7,9 @@ class AccountModel extends Account {
     required super.password,
     super.note,
     super.isCompromised,
+    super.isWeak,
+    super.isReused,
+    super.riskScore,
   });
 
   factory AccountModel.fromEntity(Account account) {
@@ -16,6 +19,9 @@ class AccountModel extends Account {
       password: account.password,
       note: account.note,
       isCompromised: account.isCompromised,
+      isWeak: account.isWeak,
+      isReused: account.isReused,
+      riskScore: account.riskScore,
     );
   }
 
@@ -26,6 +32,9 @@ class AccountModel extends Account {
       password: json['password'] as String? ?? '',
       note: json['note'] as String? ?? '',
       isCompromised: json['isCompromised'] as bool? ?? false,
+      isWeak: json['isWeak'] as bool? ?? false,
+      isReused: json['isReused'] as bool? ?? false,
+      riskScore: (json['riskScore'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -35,5 +44,8 @@ class AccountModel extends Account {
         'password': password,
         'note': note,
         'isCompromised': isCompromised,
+        'isWeak': isWeak,
+        'isReused': isReused,
+        'riskScore': riskScore,
       };
 }

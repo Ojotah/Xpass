@@ -24,26 +24,62 @@ class KAnonymityBreachChecker implements BreachChecker {
       return false;
     }
 
-    final hashHex = await _sha1Hex(password);
-    final prefix = hashHex.substring(0, 5);
-    final suffix = hashHex.substring(5);
+    final hashHex = await sha1Hex(password);
+    final grouped = await checkSha1Hashes(<String>{hashHex});
+    return grouped[hashHex] ?? false;
+  }
 
-    final response = await _queryHashRange(prefix);
+  Future<String> sha1Hex(String value) async {
+    final hash = await Sha1().hash(utf8.encode(value));
+    final buffer = StringBuffer();
+    for (final byte in hash.bytes) {
+      buffer.write(byte.toRadixString(16).padLeft(2, '0'));
+    }
+    return buffer.toString().toUpperCase();
+  }
+
+  Future<Map<String, bool>> checkSha1Hashes(Iterable<String> hashes) async {
+    final pending = hashes.where((value) => value.isNotEmpty).toSet();
+    if (pending.isEmpty) {
+      return const <String, bool>{};
+    }
+
+    final groupedByPrefix = <String, List<String>>{};
+    for (final hash in pending) {
+      final prefix = hash.substring(0, 5);
+      groupedByPrefix.putIfAbsent(prefix, () => <String>[]).add(hash.substring(5));
+    }
+
+    final resolved = <String, bool>{};
+
+    for (final group in groupedByPrefix.entries) {
+      final response = await _queryHashRange(group.key);
+      final suffixHits = _parseResponseToCounts(response);
+
+      for (final suffix in group.value) {
+        final fullHash = '${group.key}$suffix';
+        resolved[fullHash] = (suffixHits[suffix] ?? 0) > 0;
+      }
+    }
+
+    return resolved;
+  }
+
+  Map<String, int> _parseResponseToCounts(String response) {
     final lines = const LineSplitter().convert(response);
+    final counts = <String, int>{};
 
     for (final line in lines) {
       final parts = line.split(':');
       if (parts.length != 2) {
         continue;
       }
-
-      if (parts.first.trim().toUpperCase() == suffix) {
-        final count = int.tryParse(parts.last.trim()) ?? 0;
-        return count > 0;
-      }
+      final suffix = parts.first.trim().toUpperCase();
+      final count = int.tryParse(parts.last.trim()) ?? 0;
+      counts[suffix] = count;
     }
 
-    return false;
+    return counts;
   }
 
   Future<String> _queryHashRange(String hashPrefix) async {
@@ -65,14 +101,5 @@ class KAnonymityBreachChecker implements BreachChecker {
       await Future<void>.delayed(requestDelay);
     }
     return payload;
-  }
-
-  Future<String> _sha1Hex(String value) async {
-    final hash = await Sha1().hash(utf8.encode(value));
-    final buffer = StringBuffer();
-    for (final byte in hash.bytes) {
-      buffer.write(byte.toRadixString(16).padLeft(2, '0'));
-    }
-    return buffer.toString().toUpperCase();
   }
 }

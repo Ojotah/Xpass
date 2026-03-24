@@ -76,6 +76,8 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
                 Text(widget.account.title, style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 12),
                 Text('Username: ${widget.account.username}'),
+                const SizedBox(height: 8),
+                Text('Risk score: ${widget.account.riskScore}/100'),
                 const SizedBox(height: 12),
 
                 if (widget.account.isCompromised) ...[
