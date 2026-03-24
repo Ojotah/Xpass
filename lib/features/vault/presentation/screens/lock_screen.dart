@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/error/exceptions.dart';
 import '../providers/vault_providers.dart';
 import 'home_screen.dart';
 
@@ -15,7 +16,6 @@ class LockScreen extends ConsumerStatefulWidget {
 
 class _LockScreenState extends ConsumerState<LockScreen> {
   final _passwordController = TextEditingController();
-  bool _isBusy = false;
 
   @override
   void dispose() {
@@ -24,27 +24,38 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   }
 
   Future<void> _unlock() async {
-    setState(() => _isBusy = true);
+    FocusScope.of(context).unfocus();
 
-    final repository = ref.read(vaultRepositoryProvider);
-    final unlocked = await repository.unlockVault(_passwordController.text);
+    await ref.read(vaultControllerProvider.notifier).unlock(_passwordController.text);
 
     if (!mounted) return;
 
-    setState(() => _isBusy = false);
+    final nextState = ref.read(vaultControllerProvider);
+    if (nextState.hasError) {
+      final error = nextState.error;
+      final message = switch (error) {
+        WrongPasswordException() => 'Wrong master password.',
+        FileCorruptedException() => 'Vault file is corrupted.',
+        VaultException() => error.message,
+        _ => 'Unable to unlock vault.',
+      };
 
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    }
+
+    final unlocked = nextState.valueOrNull?.isUnlocked ?? false;
     if (unlocked) {
-      ref.read(vaultUnlockedProvider.notifier).state = true;
+      _passwordController.clear();
       Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Master password required.')),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final vaultState = ref.watch(vaultControllerProvider);
+    final isBusy = vaultState.isLoading;
+
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -72,8 +83,8 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 ),
                 const SizedBox(height: 16),
                 FilledButton(
-                  onPressed: _isBusy ? null : _unlock,
-                  child: _isBusy
+                  onPressed: isBusy ? null : _unlock,
+                  child: isBusy
                       ? const SizedBox(
                           width: 16,
                           height: 16,

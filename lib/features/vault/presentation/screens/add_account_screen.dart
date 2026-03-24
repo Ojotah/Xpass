@@ -33,7 +33,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
 
     setState(() => _isSaving = true);
 
-    await ref.read(accountListProvider.notifier).add(
+    await ref.read(vaultControllerProvider.notifier).addAccount(
           Account(
             title: _titleController.text.trim(),
             username: _usernameController.text.trim(),
