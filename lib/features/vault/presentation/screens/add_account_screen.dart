@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/account.dart';
+import '../../../settings/domain/entities/app_settings.dart';
+import '../../../settings/presentation/providers/settings_providers.dart';
 import '../providers/vault_providers.dart';
 
 class AddAccountScreen extends ConsumerStatefulWidget {
@@ -91,8 +93,12 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   Future<void> _copyPassword() async {
     await ref.read(copyToClipboardUseCaseProvider).call(
           _passwordController.text,
-          autoClear: ref.read(autoClearClipboardProvider),
-          clearAfter: const Duration(seconds: 15),
+          autoClear: (ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults)
+              .clipboardClearEnabled,
+          clearAfter: Duration(
+            seconds: (ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults)
+                .clipboardClearDuration,
+          ),
         );
 
     if (!mounted) return;
