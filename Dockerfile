@@ -17,12 +17,16 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libgtk-3-dev \
     liblzma-dev \
+    libsecret-1-dev \
+    libjsoncpp-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/flutter/flutter.git --branch stable --depth 1 $FLUTTER_HOME
 
 WORKDIR /workspace
 
-RUN flutter --version && flutter config --enable-linux-desktop
+RUN flutter --version \
+    && flutter config --enable-linux-desktop \
+    && flutter precache --linux
 
 CMD ["bash"]
