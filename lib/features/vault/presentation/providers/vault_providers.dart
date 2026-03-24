@@ -1,12 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/security/aes_encryption_service.dart';
 import '../../../../core/security/encryption_service.dart';
+import '../../../../core/utils/clipboard_manager.dart';
+import '../../../../core/utils/password_generator.dart';
 import '../../data/repositories/local_vault_repository.dart';
 import '../../domain/entities/account.dart';
 import '../../domain/repositories/vault_repository.dart';
+import '../../domain/usecases/copy_to_clipboard.dart';
+import '../../domain/usecases/delete_account.dart';
+import '../../domain/usecases/generate_password.dart';
 import '../../domain/usecases/save_vault.dart';
+import '../../domain/usecases/search_accounts.dart';
 import '../../domain/usecases/unlock_vault.dart';
+import '../../domain/usecases/update_account.dart';
 
 final encryptionServiceProvider = Provider<EncryptionService>((ref) {
   return AesEncryptionService();
@@ -22,6 +31,49 @@ final unlockVaultUseCaseProvider = Provider<UnlockVault>((ref) {
 
 final saveVaultUseCaseProvider = Provider<SaveVault>((ref) {
   return SaveVault(ref.watch(vaultRepositoryProvider));
+});
+
+final passwordGeneratorProvider = Provider<PasswordGenerator>((ref) {
+  return const PasswordGenerator();
+});
+
+final generatePasswordUseCaseProvider = Provider<GeneratePassword>((ref) {
+  return GeneratePassword(ref.watch(passwordGeneratorProvider));
+});
+
+final clipboardManagerProvider = Provider<ClipboardManager>((ref) {
+  final manager = ClipboardManager();
+  ref.onDispose(manager.dispose);
+  return manager;
+});
+
+final copyToClipboardUseCaseProvider = Provider<CopyToClipboard>((ref) {
+  return CopyToClipboard(ref.watch(clipboardManagerProvider));
+});
+
+final searchAccountsUseCaseProvider = Provider<SearchAccounts>((ref) {
+  return const SearchAccounts();
+});
+
+final deleteAccountUseCaseProvider = Provider<DeleteAccount>((ref) {
+  return const DeleteAccount();
+});
+
+final updateAccountUseCaseProvider = Provider<UpdateAccount>((ref) {
+  return const UpdateAccount();
+});
+
+final searchQueryProvider = StateProvider<String>((ref) => '');
+final autoClearClipboardProvider = StateProvider<bool>((ref) => true);
+final autoLockMinutesProvider = StateProvider<int>((ref) => 3);
+
+final filteredAccountsProvider = Provider<List<Account>>((ref) {
+  final accounts = ref.watch(
+    vaultControllerProvider.select((value) => value.valueOrNull?.accounts ?? const []),
+  );
+  final query = ref.watch(searchQueryProvider);
+
+  return ref.watch(searchAccountsUseCaseProvider).call(accounts, query);
 });
 
 class VaultState {
@@ -53,19 +105,22 @@ class VaultState {
 
 class VaultController extends AsyncNotifier<VaultState> {
   String? _sessionPassword;
+  Timer? _autoLockTimer;
 
   @override
-  Future<VaultState> build() async => VaultState.locked;
+  Future<VaultState> build() async {
+    ref.onDispose(() => _autoLockTimer?.cancel());
+    return VaultState.locked;
+  }
 
   Future<void> unlock(String password) async {
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(() async {
-      final accounts =
-          await ref.read(unlockVaultUseCaseProvider).call(password);
+      final accounts = await ref.read(unlockVaultUseCaseProvider).call(password);
 
-      // Password is kept in-memory only for the active unlocked session.
       _sessionPassword = password;
+      _startInactivityTimer();
 
       return VaultState(
         isUnlocked: true,
@@ -81,20 +136,64 @@ class VaultController extends AsyncNotifier<VaultState> {
     }
 
     final nextAccounts = [...current.accounts, account];
+    await _saveAndUpdateState(current, nextAccounts);
+  }
+
+  Future<void> updateAccountAt(int index, Account updated) async {
+    final current = state.valueOrNull;
+    if (current == null || !current.isUnlocked || _sessionPassword == null) {
+      return;
+    }
+
+    final nextAccounts =
+        ref.read(updateAccountUseCaseProvider).call(current.accounts, index, updated);
+    await _saveAndUpdateState(current, nextAccounts);
+  }
+
+  Future<void> deleteAccountAt(int index) async {
+    final current = state.valueOrNull;
+    if (current == null || !current.isUnlocked || _sessionPassword == null) {
+      return;
+    }
+
+    final nextAccounts = ref.read(deleteAccountUseCaseProvider).call(current.accounts, index);
+    await _saveAndUpdateState(current, nextAccounts);
+  }
+
+  void registerInteraction() {
+    final current = state.valueOrNull;
+    if (current?.isUnlocked ?? false) {
+      _startInactivityTimer();
+    }
+  }
+
+  void lock() {
+    _autoLockTimer?.cancel();
+    _sessionPassword = null;
+    state = const AsyncData(VaultState.locked);
+  }
+
+  Future<void> _saveAndUpdateState(
+    VaultState current,
+    List<Account> nextAccounts,
+  ) async {
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(() async {
-      await ref
-          .read(saveVaultUseCaseProvider)
-          .call(nextAccounts, _sessionPassword!);
+      await ref.read(saveVaultUseCaseProvider).call(nextAccounts, _sessionPassword!);
+      _startInactivityTimer();
       return current.copyWith(accounts: nextAccounts, clearError: true);
     });
   }
 
-  void lock() {
-    // Explicitly clear all in-memory sensitive state on lock.
-    _sessionPassword = null;
-    state = const AsyncData(VaultState.locked);
+  void _startInactivityTimer() {
+    _autoLockTimer?.cancel();
+    final minutes = ref.read(autoLockMinutesProvider);
+    if (minutes <= 0) {
+      return;
+    }
+
+    _autoLockTimer = Timer(Duration(minutes: minutes), lock);
   }
 }
 

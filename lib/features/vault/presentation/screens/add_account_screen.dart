@@ -5,7 +5,16 @@ import '../../domain/entities/account.dart';
 import '../providers/vault_providers.dart';
 
 class AddAccountScreen extends ConsumerStatefulWidget {
-  const AddAccountScreen({super.key});
+  const AddAccountScreen({
+    super.key,
+    this.index,
+    this.initialAccount,
+  });
+
+  final int? index;
+  final Account? initialAccount;
+
+  bool get isEdit => index != null && initialAccount != null;
 
   @override
   ConsumerState<AddAccountScreen> createState() => _AddAccountScreenState();
@@ -13,10 +22,26 @@ class AddAccountScreen extends ConsumerStatefulWidget {
 
 class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  late final TextEditingController _titleController;
+  late final TextEditingController _usernameController;
+  late final TextEditingController _passwordController;
+
   bool _isSaving = false;
+  bool _includeUppercase = true;
+  bool _includeLowercase = true;
+  bool _includeNumbers = true;
+  bool _includeSymbols = true;
+  double _length = 16;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.initialAccount?.title ?? '');
+    _usernameController =
+        TextEditingController(text: widget.initialAccount?.username ?? '');
+    _passwordController =
+        TextEditingController(text: widget.initialAccount?.password ?? '');
+  }
 
   @override
   void dispose() {
@@ -33,13 +58,18 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
 
     setState(() => _isSaving = true);
 
-    await ref.read(vaultControllerProvider.notifier).addAccount(
-          Account(
-            title: _titleController.text.trim(),
-            username: _usernameController.text.trim(),
-            password: _passwordController.text,
-          ),
-        );
+    final account = Account(
+      title: _titleController.text.trim(),
+      username: _usernameController.text.trim(),
+      password: _passwordController.text,
+    );
+
+    final controller = ref.read(vaultControllerProvider.notifier);
+    if (widget.isEdit) {
+      await controller.updateAccountAt(widget.index!, account);
+    } else {
+      await controller.addAccount(account);
+    }
 
     if (!mounted) return;
 
@@ -47,18 +77,45 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
     Navigator.of(context).pop();
   }
 
+  void _generatePassword() {
+    final generated = ref.read(generatePasswordUseCaseProvider).call(
+          length: _length.round(),
+          includeUppercase: _includeUppercase,
+          includeLowercase: _includeLowercase,
+          includeNumbers: _includeNumbers,
+          includeSymbols: _includeSymbols,
+        );
+    _passwordController.text = generated;
+  }
+
+  Future<void> _copyPassword() async {
+    await ref.read(copyToClipboardUseCaseProvider).call(
+          _passwordController.text,
+          autoClear: ref.read(autoClearClipboardProvider),
+          clearAfter: const Duration(seconds: 15),
+        );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Password copied to clipboard.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final title = widget.isEdit ? 'Edit Account' : 'Add Account';
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Account')),
+      appBar: AppBar(title: Text(title)),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Padding(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Form(
               key: _formKey,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   TextFormField(
                     controller: _titleController,
@@ -81,7 +138,65 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                     validator: (value) =>
                         (value == null || value.isEmpty) ? 'Required' : null,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _generatePassword,
+                        icon: const Icon(Icons.password),
+                        label: const Text('Generate'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _passwordController.text.isEmpty ? null : _copyPassword,
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copy'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Generator settings',
+                              style: Theme.of(context).textTheme.titleMedium),
+                          Slider(
+                            min: 8,
+                            max: 32,
+                            divisions: 24,
+                            value: _length,
+                            label: _length.round().toString(),
+                            onChanged: (value) => setState(() => _length = value),
+                          ),
+                          Text('Length: ${_length.round()}'),
+                          SwitchListTile(
+                            value: _includeUppercase,
+                            title: const Text('Uppercase'),
+                            onChanged: (value) => setState(() => _includeUppercase = value),
+                          ),
+                          SwitchListTile(
+                            value: _includeLowercase,
+                            title: const Text('Lowercase'),
+                            onChanged: (value) => setState(() => _includeLowercase = value),
+                          ),
+                          SwitchListTile(
+                            value: _includeNumbers,
+                            title: const Text('Numbers'),
+                            onChanged: (value) => setState(() => _includeNumbers = value),
+                          ),
+                          SwitchListTile(
+                            value: _includeSymbols,
+                            title: const Text('Symbols'),
+                            onChanged: (value) => setState(() => _includeSymbols = value),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   FilledButton.icon(
                     onPressed: _isSaving ? null : _save,
                     icon: const Icon(Icons.save),
