@@ -30,7 +30,7 @@ import '../../domain/usecases/save_vault.dart';
 import '../../domain/usecases/search_accounts.dart';
 import '../../domain/usecases/unlock_vault.dart';
 import '../../domain/usecases/update_account.dart';
-import '../../domain/usecases/update_password_security_status.dart';
+import '../../domain/usecases/check_all_passwords_breach.dart';
 
 final encryptionServiceProvider = Provider<EncryptionService>((ref) {
   return AesEncryptionService();
@@ -91,15 +91,15 @@ final copyToClipboardUseCaseProvider = Provider<CopyToClipboard>((ref) {
 });
 
 final breachCheckerProvider = Provider<BreachChecker>((ref) {
-  return const BreachChecker();
+  return KAnonymityBreachChecker();
 });
 
 final checkPasswordBreachUseCaseProvider = Provider<CheckPasswordBreach>((ref) {
   return CheckPasswordBreach(ref.watch(breachCheckerProvider));
 });
 
-final updatePasswordSecurityStatusUseCaseProvider = Provider<UpdatePasswordSecurityStatus>((ref) {
-  return UpdatePasswordSecurityStatus(ref.watch(checkPasswordBreachUseCaseProvider));
+final checkAllPasswordsBreachUseCaseProvider = Provider<CheckAllPasswordsBreach>((ref) {
+  return CheckAllPasswordsBreach(ref.watch(checkPasswordBreachUseCaseProvider));
 });
 
 final searchAccountsUseCaseProvider = Provider<SearchAccounts>((ref) {
@@ -198,7 +198,7 @@ class VaultController extends AsyncNotifier<VaultState> {
 
       _sessionPassword = password;
       _startInactivityTimer();
-      unawaited(_triggerPeriodicBreachCheckIfNeeded());
+      unawaited(_runBreachScanIfNeeded(force: false));
 
       return VaultState(
         isUnlocked: true,
@@ -264,6 +264,10 @@ class VaultController extends AsyncNotifier<VaultState> {
     _startInactivityTimer();
   }
 
+  Future<int> runBreachScan({bool force = true}) async {
+    return _runBreachScanIfNeeded(force: force);
+  }
+
   Future<void> switchVault() async {
     _sessionPassword = null;
     state = const AsyncData(VaultState.locked);
@@ -310,27 +314,27 @@ class VaultController extends AsyncNotifier<VaultState> {
     _autoLockTimer = Timer(Duration(minutes: minutes), lock);
   }
 
-  Future<void> _triggerPeriodicBreachCheckIfNeeded() async {
+  Future<int> _runBreachScanIfNeeded({required bool force}) async {
     if (_isBreachCheckRunning) {
-      return;
+      return 0;
     }
 
     final settings = ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
     final lastCheck = settings.lastBreachCheck;
     final now = DateTime.now().toUtc();
-    if (lastCheck != null && now.difference(lastCheck).inDays < 3) {
-      return;
+    if (!force && lastCheck != null && now.difference(lastCheck).inDays < 3) {
+      return 0;
     }
 
     _isBreachCheckRunning = true;
     try {
       final current = state.valueOrNull;
       if (current == null || !current.isUnlocked || _sessionPassword == null) {
-        return;
+        return 0;
       }
 
       final updatedAccounts =
-          await ref.read(updatePasswordSecurityStatusUseCaseProvider).call(current.accounts);
+          await ref.read(checkAllPasswordsBreachUseCaseProvider).call(current.accounts);
 
       await ref.read(saveVaultUseCaseProvider).call(
             vaultId: _activeVaultId,
@@ -338,10 +342,13 @@ class VaultController extends AsyncNotifier<VaultState> {
             masterPassword: _sessionPassword!,
           );
 
+      final compromisedCount =
+          updatedAccounts.where((account) => account.isCompromised).length;
       state = AsyncData(current.copyWith(accounts: updatedAccounts, clearError: true));
       await ref.read(settingsControllerProvider.notifier).updateLastBreachCheck(now);
+      return compromisedCount;
     } catch (_) {
-      // Keep app usable even if external breach API is unreachable.
+      return -1;
     } finally {
       _isBreachCheckRunning = false;
     }

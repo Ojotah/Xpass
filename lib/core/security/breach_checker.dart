@@ -3,15 +3,22 @@ import 'dart:io';
 
 import 'package:cryptography/cryptography.dart';
 
-class BreachChecker {
-  const BreachChecker({
+abstract class BreachChecker {
+  Future<bool> isPasswordCompromised(String password);
+}
+
+class KAnonymityBreachChecker implements BreachChecker {
+  KAnonymityBreachChecker({
     HttpClient? httpClient,
     this.endpointBase = 'https://api.pwnedpasswords.com/range/',
+    this.requestDelay = const Duration(milliseconds: 120),
   }) : _httpClient = httpClient;
 
   final HttpClient? _httpClient;
   final String endpointBase;
+  final Duration requestDelay;
 
+  @override
   Future<bool> isPasswordCompromised(String password) async {
     if (password.isEmpty) {
       return false;
@@ -44,7 +51,7 @@ class BreachChecker {
     final uri = Uri.parse('$endpointBase$hashPrefix');
     final request = await client.getUrl(uri);
     request.headers.set(HttpHeaders.userAgentHeader, 'XPass/1.0');
-    
+
     final response = await request.close();
     if (response.statusCode != HttpStatus.ok) {
       throw HttpException(
@@ -53,14 +60,17 @@ class BreachChecker {
       );
     }
 
-    return response.transform(utf8.decoder).join();
+    final payload = await response.transform(utf8.decoder).join();
+    if (requestDelay > Duration.zero) {
+      await Future<void>.delayed(requestDelay);
+    }
+    return payload;
   }
 
   Future<String> _sha1Hex(String value) async {
     final hash = await Sha1().hash(utf8.encode(value));
-    final bytes = hash.bytes;
     final buffer = StringBuffer();
-    for (final byte in bytes) {
+    for (final byte in hash.bytes) {
       buffer.write(byte.toRadixString(16).padLeft(2, '0'));
     }
     return buffer.toString().toUpperCase();

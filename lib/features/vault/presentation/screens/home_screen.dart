@@ -110,7 +110,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     crossAxisCount: 3,
                                     crossAxisSpacing: 10,
                                     mainAxisSpacing: 10,
-                                    childAspectRatio: 1.65,
+                                    childAspectRatio: 1.85,
                                   ),
                                   itemCount: filteredAccounts.length,
                                   itemBuilder: (context, index) {
@@ -139,8 +139,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         },
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 10,
+                                            horizontal: 10,
+                                            vertical: 8,
                                           ),
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
