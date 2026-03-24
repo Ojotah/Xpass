@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/exceptions.dart';
+import '../../../security/presentation/providers/security_providers.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
 import '../providers/vault_providers.dart';
 import 'home_screen.dart';
@@ -17,11 +18,37 @@ class LockScreen extends ConsumerStatefulWidget {
 
 class _LockScreenState extends ConsumerState<LockScreen> {
   final _passwordController = TextEditingController();
+  bool _biometricTried = false;
 
   @override
   void dispose() {
     _passwordController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_biometricTried) {
+      _biometricTried = true;
+      _tryBiometricUnlock();
+    }
+  }
+
+  Future<void> _tryBiometricUnlock() async {
+    final settings = ref.read(settingsControllerProvider).valueOrNull;
+    if (settings == null || !settings.biometricEnabled) {
+      return;
+    }
+
+    final authenticated = await ref.read(authenticateBiometricUseCaseProvider).call();
+    if (!authenticated || !mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Biometric verification complete. Enter password to unlock.')),
+    );
   }
 
   Future<void> _unlock() async {
@@ -56,8 +83,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   Widget build(BuildContext context) {
     final vaultState = ref.watch(vaultControllerProvider);
     final isBusy = vaultState.isLoading;
-    final passwordHint =
-        ref.watch(settingsControllerProvider).valueOrNull?.passwordHint.trim() ?? '';
+    final passwordHint = ref.watch(settingsControllerProvider).valueOrNull?.activeVault.passwordHint ?? '';
 
     return Scaffold(
       body: Center(
@@ -84,7 +110,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   ),
                   onSubmitted: (_) => _unlock(),
                 ),
-                if (passwordHint.isNotEmpty) ...[
+                if (passwordHint.trim().isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Text(
                     'Hint: $passwordHint',

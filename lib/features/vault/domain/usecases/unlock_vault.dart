@@ -6,7 +6,7 @@ class UnlockVault {
 
   final VaultRepository _repository;
 
-  Future<List<Account>> call(String masterPassword) {
-    return _repository.unlockVault(masterPassword);
+  Future<List<Account>> call({required String vaultId, required String masterPassword}) {
+    return _repository.unlockVault(vaultId: vaultId, masterPassword: masterPassword);
   }
 }

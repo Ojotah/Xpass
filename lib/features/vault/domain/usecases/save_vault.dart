@@ -6,7 +6,15 @@ class SaveVault {
 
   final VaultRepository _repository;
 
-  Future<void> call(List<Account> accounts, String masterPassword) {
-    return _repository.saveVault(accounts, masterPassword);
+  Future<void> call({
+    required String vaultId,
+    required List<Account> accounts,
+    required String masterPassword,
+  }) {
+    return _repository.saveVault(
+      vaultId: vaultId,
+      accounts: accounts,
+      masterPassword: masterPassword,
+    );
   }
 }

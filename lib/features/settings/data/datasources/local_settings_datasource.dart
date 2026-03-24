@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../core/error/exceptions.dart';
+import '../../domain/entities/app_settings.dart';
 import '../models/app_settings_model.dart';
 
 class LocalSettingsDataSource {
@@ -18,24 +19,12 @@ class LocalSettingsDataSource {
   Future<AppSettingsModel> readSettings() async {
     final file = await _resolveSettingsFile();
     if (!await file.exists()) {
-      return const AppSettingsModel(
-        autoLockTimeout: 5,
-        clipboardClearEnabled: true,
-        clipboardClearDuration: 15,
-        vaultName: 'My Vault',
-        passwordHint: '',
-      );
+      return AppSettingsModel.fromEntity(AppSettings.defaults);
     }
 
     final raw = await file.readAsString();
     if (raw.trim().isEmpty) {
-      return const AppSettingsModel(
-        autoLockTimeout: 5,
-        clipboardClearEnabled: true,
-        clipboardClearDuration: 15,
-        vaultName: 'My Vault',
-        passwordHint: '',
-      );
+      return AppSettingsModel.fromEntity(AppSettings.defaults);
     }
 
     try {

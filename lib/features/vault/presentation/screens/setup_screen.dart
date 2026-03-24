@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/password_strength_validator.dart';
 import '../../../settings/domain/entities/app_settings.dart';
+import '../../../settings/domain/entities/app_vault.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
 import 'home_screen.dart';
 import '../providers/vault_providers.dart';
@@ -42,9 +43,14 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     setState(() => _isBusy = true);
 
     final password = _masterPasswordController.text;
-    final settings = AppSettings.defaults.copyWith(
-      vaultName: _vaultNameController.text.trim(),
+    final vault = AppVault(
+      id: 'default',
+      name: _vaultNameController.text.trim(),
       passwordHint: _hintController.text.trim(),
+    );
+    final settings = AppSettings.defaults.copyWith(
+      activeVaultId: vault.id,
+      vaults: [vault],
     );
 
     try {

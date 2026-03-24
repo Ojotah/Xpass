@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../providers/vault_providers.dart';
+import '../../../vault_switching/presentation/screens/vault_selection_screen.dart';
 import '../widgets/account_list_tile.dart';
 import 'account_details_screen.dart';
 import 'add_account_screen.dart';
@@ -62,8 +63,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       behavior: HitTestBehavior.translucent,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(settings?.vaultName ?? 'Vault Accounts'),
+          title: Text(settings?.activeVault.name ?? 'Vault Accounts'),
           actions: [
+            IconButton(
+              tooltip: 'Vaults',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const VaultSelectionScreen()),
+                );
+              },
+              icon: const Icon(Icons.folder_copy_outlined),
+            ),
             IconButton(
               tooltip: 'Settings',
               onPressed: () {

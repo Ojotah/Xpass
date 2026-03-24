@@ -6,10 +6,12 @@ class ChangeMasterPassword {
   final VaultRepository _repository;
 
   Future<void> call({
+    required String vaultId,
     required String currentPassword,
     required String newPassword,
   }) {
     return _repository.changeMasterPassword(
+      vaultId: vaultId,
       currentPassword: currentPassword,
       newPassword: newPassword,
     );

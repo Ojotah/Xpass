@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'features/settings/domain/entities/app_settings.dart';
 import 'features/settings/presentation/providers/settings_providers.dart';
 import 'features/vault/presentation/providers/vault_providers.dart';
 import 'features/vault/presentation/screens/home_screen.dart';
@@ -12,25 +13,66 @@ void main() {
   runApp(const ProviderScope(child: XPassApp()));
 }
 
-class XPassApp extends StatelessWidget {
+class XPassApp extends ConsumerStatefulWidget {
   const XPassApp({super.key});
 
   @override
+  ConsumerState<XPassApp> createState() => _XPassAppState();
+}
+
+class _XPassAppState extends ConsumerState<XPassApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden) {
+      ref.read(vaultControllerProvider.notifier).lock();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'XPass',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color.fromARGB(255, 117, 37, 105)),
-        useMaterial3: true,
+    final settings = ref.watch(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
+
+    return Listener(
+      onPointerDown: (_) => ref.read(vaultControllerProvider.notifier).registerInteraction(),
+      child: MaterialApp(
+        title: 'XPass',
+        debugShowCheckedModeBanner: false,
+        themeMode: settings.themeMode,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color.fromARGB(255, 117, 37, 105),
+            brightness: Brightness.light,
+          ),
+          useMaterial3: true,
+        ),
+        darkTheme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color.fromARGB(255, 117, 37, 105),
+            brightness: Brightness.dark,
+          ),
+          useMaterial3: true,
+        ),
+        home: const AppStartGate(),
+        routes: {
+          LockScreen.routeName: (_) => const LockScreen(),
+          HomeScreen.routeName: (_) => const HomeScreen(),
+          SetupScreen.routeName: (_) => const SetupScreen(),
+        },
       ),
-      home: const AppStartGate(),
-      routes: {
-        LockScreen.routeName: (_) => const LockScreen(),
-        HomeScreen.routeName: (_) => const HomeScreen(),
-        SetupScreen.routeName: (_) => const SetupScreen(),
-      },
     );
   }
 }
@@ -40,8 +82,8 @@ class AppStartGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(settingsControllerProvider);
-    final vaultExists = ref.watch(_vaultExistsProvider);
+    final settings = ref.watch(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
+    final vaultExists = ref.watch(_vaultExistsProvider(settings.activeVaultId));
 
     return vaultExists.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
@@ -51,6 +93,6 @@ class AppStartGate extends ConsumerWidget {
   }
 }
 
-final _vaultExistsProvider = FutureProvider<bool>((ref) {
-  return ref.read(checkVaultExistsUseCaseProvider).call();
+final _vaultExistsProvider = FutureProvider.family<bool, String>((ref, vaultId) {
+  return ref.read(checkVaultExistsUseCaseProvider).call(vaultId);
 });
