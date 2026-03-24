@@ -5,6 +5,7 @@ class AccountModel extends Account {
     required super.title,
     required super.username,
     required super.password,
+    super.note,
   });
 
   factory AccountModel.fromEntity(Account account) {
@@ -12,6 +13,7 @@ class AccountModel extends Account {
       title: account.title,
       username: account.username,
       password: account.password,
+      note: account.note,
     );
   }
 
@@ -20,6 +22,7 @@ class AccountModel extends Account {
       title: json['title'] as String? ?? '',
       username: json['username'] as String? ?? '',
       password: json['password'] as String? ?? '',
+      note: json['note'] as String? ?? '',
     );
   }
 
@@ -27,5 +30,6 @@ class AccountModel extends Account {
         'title': title,
         'username': username,
         'password': password,
+        'note': note,
       };
 }

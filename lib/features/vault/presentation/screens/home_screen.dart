@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
+import '../../../vault_switching/presentation/screens/vault_selection_screen.dart';
 import '../providers/vault_providers.dart';
-import '../widgets/account_list_tile.dart';
 import 'account_details_screen.dart';
 import 'add_account_screen.dart';
 import 'lock_screen.dart';
@@ -18,28 +18,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden ||
-        state == AppLifecycleState.paused) {
-      ref.read(vaultControllerProvider.notifier).lock();
-    }
-  }
-
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(vaultControllerProvider, (previous, next) {
@@ -62,8 +41,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       behavior: HitTestBehavior.translucent,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(settings?.vaultName ?? 'Vault Accounts'),
+          title: Text(settings?.activeVault.name ?? 'Vault Accounts'),
           actions: [
+            IconButton(
+              tooltip: 'Vaults',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const VaultSelectionScreen()),
+                );
+              },
+              icon: const Icon(Icons.folder_copy_outlined),
+            ),
             IconButton(
               tooltip: 'Settings',
               onPressed: () {
@@ -89,40 +77,101 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             return Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Center(
+                    child: Text(
+                      settings?.activeVault.name ?? 'Vault Accounts',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.search),
                       hintText: 'Search by title or username',
                     ),
-                    onChanged: (value) =>
-                        ref.read(searchQueryProvider.notifier).state = value,
+                    onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
                   ),
+                  const SizedBox(height: 8),
                   const SizedBox(height: 8),
                   Expanded(
                     child: data.accounts.isEmpty
                         ? const Center(child: Text('No accounts yet. Add your first account.'))
                         : filteredAccounts.isEmpty
                             ? const Center(child: Text('No accounts found.'))
-                            : ListView.builder(
-                                itemCount: filteredAccounts.length,
-                                itemBuilder: (context, index) {
-                                  final account = filteredAccounts[index];
-                                  final originalIndex = data.accounts.indexOf(account);
-                                  return AccountListTile(
-                                    account: account,
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) => AccountDetailsScreen(
-                                            index: originalIndex,
-                                            account: account,
+                            : AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 220),
+                                child: GridView.builder(
+                                  key: ValueKey('accounts-grid-${filteredAccounts.length}'),
+                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 3,
+                                    crossAxisSpacing: 10,
+                                    mainAxisSpacing: 10,
+                                    childAspectRatio: 1.6,
+                                  ),
+                                  itemCount: filteredAccounts.length,
+                                  itemBuilder: (context, index) {
+                                    final account = filteredAccounts[index];
+                                    final originalIndex = data.accounts.indexOf(account);
+                                    return Card(
+                                      clipBehavior: Clip.antiAlias,
+                                      child: InkWell(
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute<void>(
+                                              builder: (_) => AccountDetailsScreen(
+                                                index: originalIndex,
+                                                account: account,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.lock_person_outlined),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      account.title,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                account.username,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context).textTheme.bodyLarge,
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                account.note.trim().isEmpty ? 'No note' : account.note,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                    ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      );
-                                    },
-                                  );
-                                },
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                   ),
                 ],

@@ -14,17 +14,18 @@ class LocalVaultRepository implements VaultRepository {
 
   final EncryptionService _encryptionService;
 
-  static const _vaultFileName = 'vault.dat';
-
   @override
-  Future<bool> vaultExists() async {
-    final file = await _resolveVaultFile();
+  Future<bool> vaultExists(String vaultId) async {
+    final file = await _resolveVaultFile(vaultId);
     return file.exists();
   }
 
   @override
-  Future<void> initializeVault({required String masterPassword}) async {
-    final file = await _resolveVaultFile();
+  Future<void> initializeVault({
+    required String vaultId,
+    required String masterPassword,
+  }) async {
+    final file = await _resolveVaultFile(vaultId);
     if (await file.exists()) {
       return;
     }
@@ -33,8 +34,11 @@ class LocalVaultRepository implements VaultRepository {
   }
 
   @override
-  Future<List<Account>> unlockVault(String masterPassword) async {
-    final file = await _resolveVaultFile();
+  Future<List<Account>> unlockVault({
+    required String vaultId,
+    required String masterPassword,
+  }) async {
+    final file = await _resolveVaultFile(vaultId);
 
     if (!await file.exists()) {
       throw const VaultException('Vault is not initialized.');
@@ -54,17 +58,22 @@ class LocalVaultRepository implements VaultRepository {
   }
 
   @override
-  Future<void> saveVault(List<Account> accounts, String masterPassword) async {
-    final file = await _resolveVaultFile();
+  Future<void> saveVault({
+    required String vaultId,
+    required List<Account> accounts,
+    required String masterPassword,
+  }) async {
+    final file = await _resolveVaultFile(vaultId);
     await _writeEncryptedVault(file, accounts, masterPassword);
   }
 
   @override
   Future<void> changeMasterPassword({
+    required String vaultId,
     required String currentPassword,
     required String newPassword,
   }) async {
-    final file = await _resolveVaultFile();
+    final file = await _resolveVaultFile(vaultId);
     if (!await file.exists()) {
       throw const VaultException('Vault is not initialized.');
     }
@@ -76,15 +85,49 @@ class LocalVaultRepository implements VaultRepository {
     try {
       await _writeEncryptedVault(file, accounts, newPassword);
     } finally {
-      // Best-effort to release references that held decrypted data.
       accounts.clear();
     }
   }
 
-  Future<File> _resolveVaultFile() async {
+  @override
+  Future<File> exportVault({required String vaultId, required String targetPath}) async {
+    final vaultFile = await _resolveVaultFile(vaultId);
+    if (!await vaultFile.exists()) {
+      throw const VaultException('Vault does not exist.');
+    }
+
+    return vaultFile.copy(targetPath);
+  }
+
+  @override
+  Future<void> importVault({required String vaultId, required String sourcePath}) async {
+    final source = File(sourcePath);
+    if (!await source.exists()) {
+      throw const VaultException('Selected import file does not exist.');
+    }
+
+    final content = await source.readAsString();
+    if (content.trim().isEmpty) {
+      throw const FileCorruptedException('Import file is empty.');
+    }
+
+    final target = await _resolveVaultFile(vaultId);
+    await target.writeAsString(content, flush: true);
+  }
+
+  @override
+  Future<void> deleteVault(String vaultId) async {
+    final file = await _resolveVaultFile(vaultId);
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
+
+  Future<File> _resolveVaultFile(String vaultId) async {
     final documentsDirectory = await getApplicationDocumentsDirectory();
-    await documentsDirectory.create(recursive: true);
-    return File('${documentsDirectory.path}/$_vaultFileName');
+    final vaultDirectory = Directory('${documentsDirectory.path}/vaults');
+    await vaultDirectory.create(recursive: true);
+    return File('${vaultDirectory.path}/$vaultId.dat');
   }
 
   Future<void> _writeEncryptedVault(

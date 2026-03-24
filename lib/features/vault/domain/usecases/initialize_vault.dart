@@ -5,7 +5,7 @@ class InitializeVault {
 
   final VaultRepository _repository;
 
-  Future<void> call({required String masterPassword}) {
-    return _repository.initializeVault(masterPassword: masterPassword);
+  Future<void> call({required String vaultId, required String masterPassword}) {
+    return _repository.initializeVault(vaultId: vaultId, masterPassword: masterPassword);
   }
 }

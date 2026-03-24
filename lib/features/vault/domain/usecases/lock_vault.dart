@@ -1,0 +1,3 @@
+class LockVault {
+  const LockVault();
+}

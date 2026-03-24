@@ -10,12 +10,19 @@ import '../../../settings/domain/entities/app_settings.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../data/repositories/local_vault_repository.dart';
 import '../../domain/entities/account.dart';
+import '../../domain/entities/account_category.dart';
 import '../../domain/repositories/vault_repository.dart';
 import '../../domain/usecases/change_master_password.dart';
 import '../../domain/usecases/check_vault_exists.dart';
 import '../../domain/usecases/copy_to_clipboard.dart';
 import '../../domain/usecases/delete_account.dart';
+import '../../domain/usecases/delete_vault.dart';
+import '../../domain/usecases/detect_account_category.dart';
+import '../../domain/usecases/export_vault.dart';
 import '../../domain/usecases/generate_password.dart';
+import '../../domain/usecases/import_vault.dart';
+import '../../domain/usecases/get_accounts_by_category.dart';
+import '../../domain/usecases/get_category_counts.dart';
 import '../../domain/usecases/initialize_vault.dart';
 import '../../domain/usecases/save_vault.dart';
 import '../../domain/usecases/search_accounts.dart';
@@ -50,6 +57,18 @@ final changeMasterPasswordUseCaseProvider = Provider<ChangeMasterPassword>((ref)
   return ChangeMasterPassword(ref.watch(vaultRepositoryProvider));
 });
 
+final exportVaultUseCaseProvider = Provider<ExportVault>((ref) {
+  return ExportVault(ref.watch(vaultRepositoryProvider));
+});
+
+final importVaultUseCaseProvider = Provider<ImportVault>((ref) {
+  return ImportVault(ref.watch(vaultRepositoryProvider));
+});
+
+final deleteVaultUseCaseProvider = Provider<DeleteVault>((ref) {
+  return DeleteVault(ref.watch(vaultRepositoryProvider));
+});
+
 final passwordGeneratorProvider = Provider<PasswordGenerator>((ref) {
   return const PasswordGenerator();
 });
@@ -82,13 +101,36 @@ final updateAccountUseCaseProvider = Provider<UpdateAccount>((ref) {
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
+final detectAccountCategoryUseCaseProvider = Provider<DetectAccountCategory>((ref) {
+  return const DetectAccountCategory();
+});
+
+final getAccountsByCategoryUseCaseProvider = Provider<GetAccountsByCategory>((ref) {
+  return GetAccountsByCategory(ref.watch(detectAccountCategoryUseCaseProvider));
+});
+
+final getCategoryCountsUseCaseProvider = Provider<GetCategoryCounts>((ref) {
+  return GetCategoryCounts(ref.watch(detectAccountCategoryUseCaseProvider));
+});
+
+final selectedCategoryProvider = StateProvider<AccountCategory>((ref) => AccountCategory.all);
+
 final filteredAccountsProvider = Provider<List<Account>>((ref) {
   final accounts = ref.watch(
     vaultControllerProvider.select((value) => value.valueOrNull?.accounts ?? const []),
   );
   final query = ref.watch(searchQueryProvider);
+  final category = ref.watch(selectedCategoryProvider);
 
-  return ref.watch(searchAccountsUseCaseProvider).call(accounts, query);
+  final byCategory = ref.watch(getAccountsByCategoryUseCaseProvider).call(accounts, category);
+  return ref.watch(searchAccountsUseCaseProvider).call(byCategory, query);
+});
+
+final categoryCountsProvider = Provider<Map<AccountCategory, int>>((ref) {
+  final accounts = ref.watch(
+    vaultControllerProvider.select((value) => value.valueOrNull?.accounts ?? const []),
+  );
+  return ref.watch(getCategoryCountsUseCaseProvider).call(accounts);
 });
 
 class VaultState {
@@ -122,6 +164,11 @@ class VaultController extends AsyncNotifier<VaultState> {
   String? _sessionPassword;
   Timer? _autoLockTimer;
 
+  String get _activeVaultId {
+    final settings = ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
+    return settings.activeVaultId;
+  }
+
   @override
   Future<VaultState> build() async {
     ref.onDispose(() => _autoLockTimer?.cancel());
@@ -132,7 +179,8 @@ class VaultController extends AsyncNotifier<VaultState> {
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(() async {
-      final accounts = await ref.read(unlockVaultUseCaseProvider).call(password);
+      final accounts =
+          await ref.read(unlockVaultUseCaseProvider).call(vaultId: _activeVaultId, masterPassword: password);
 
       _sessionPassword = password;
       _startInactivityTimer();
@@ -145,7 +193,9 @@ class VaultController extends AsyncNotifier<VaultState> {
   }
 
   Future<void> initialize(String password) async {
-    await ref.read(initializeVaultUseCaseProvider).call(masterPassword: password);
+    await ref
+        .read(initializeVaultUseCaseProvider)
+        .call(vaultId: _activeVaultId, masterPassword: password);
     _sessionPassword = password;
     state = const AsyncData(VaultState(isUnlocked: true, accounts: []));
     _startInactivityTimer();
@@ -187,12 +237,18 @@ class VaultController extends AsyncNotifier<VaultState> {
     required String newPassword,
   }) async {
     await ref.read(changeMasterPasswordUseCaseProvider).call(
+          vaultId: _activeVaultId,
           currentPassword: currentPassword,
           newPassword: newPassword,
         );
 
     _sessionPassword = newPassword;
     _startInactivityTimer();
+  }
+
+  Future<void> switchVault() async {
+    _sessionPassword = null;
+    state = const AsyncData(VaultState.locked);
   }
 
   void registerInteraction() {
@@ -215,7 +271,11 @@ class VaultController extends AsyncNotifier<VaultState> {
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(() async {
-      await ref.read(saveVaultUseCaseProvider).call(nextAccounts, _sessionPassword!);
+      await ref.read(saveVaultUseCaseProvider).call(
+            vaultId: _activeVaultId,
+            accounts: nextAccounts,
+            masterPassword: _sessionPassword!,
+          );
       _startInactivityTimer();
       return current.copyWith(accounts: nextAccounts, clearError: true);
     });
