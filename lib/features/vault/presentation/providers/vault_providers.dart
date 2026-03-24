@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/security/aes_encryption_service.dart';
+import '../../../../core/security/breach_checker.dart';
 import '../../../../core/security/encryption_service.dart';
 import '../../../../core/utils/clipboard_manager.dart';
 import '../../../../core/utils/password_generator.dart';
@@ -13,6 +14,7 @@ import '../../domain/entities/account.dart';
 import '../../domain/entities/account_category.dart';
 import '../../domain/repositories/vault_repository.dart';
 import '../../domain/usecases/change_master_password.dart';
+import '../../domain/usecases/check_password_breach.dart';
 import '../../domain/usecases/check_vault_exists.dart';
 import '../../domain/usecases/copy_to_clipboard.dart';
 import '../../domain/usecases/delete_account.dart';
@@ -20,14 +22,15 @@ import '../../domain/usecases/delete_vault.dart';
 import '../../domain/usecases/detect_account_category.dart';
 import '../../domain/usecases/export_vault.dart';
 import '../../domain/usecases/generate_password.dart';
-import '../../domain/usecases/import_vault.dart';
 import '../../domain/usecases/get_accounts_by_category.dart';
 import '../../domain/usecases/get_category_counts.dart';
+import '../../domain/usecases/import_vault.dart';
 import '../../domain/usecases/initialize_vault.dart';
 import '../../domain/usecases/save_vault.dart';
 import '../../domain/usecases/search_accounts.dart';
 import '../../domain/usecases/unlock_vault.dart';
 import '../../domain/usecases/update_account.dart';
+import '../../domain/usecases/update_password_security_status.dart';
 
 final encryptionServiceProvider = Provider<EncryptionService>((ref) {
   return AesEncryptionService();
@@ -87,6 +90,18 @@ final copyToClipboardUseCaseProvider = Provider<CopyToClipboard>((ref) {
   return CopyToClipboard(ref.watch(clipboardManagerProvider));
 });
 
+final breachCheckerProvider = Provider<BreachChecker>((ref) {
+  return const BreachChecker();
+});
+
+final checkPasswordBreachUseCaseProvider = Provider<CheckPasswordBreach>((ref) {
+  return CheckPasswordBreach(ref.watch(breachCheckerProvider));
+});
+
+final updatePasswordSecurityStatusUseCaseProvider = Provider<UpdatePasswordSecurityStatus>((ref) {
+  return UpdatePasswordSecurityStatus(ref.watch(checkPasswordBreachUseCaseProvider));
+});
+
 final searchAccountsUseCaseProvider = Provider<SearchAccounts>((ref) {
   return const SearchAccounts();
 });
@@ -120,10 +135,8 @@ final filteredAccountsProvider = Provider<List<Account>>((ref) {
     vaultControllerProvider.select((value) => value.valueOrNull?.accounts ?? const []),
   );
   final query = ref.watch(searchQueryProvider);
-  final category = ref.watch(selectedCategoryProvider);
 
-  final byCategory = ref.watch(getAccountsByCategoryUseCaseProvider).call(accounts, category);
-  return ref.watch(searchAccountsUseCaseProvider).call(byCategory, query);
+  return ref.watch(searchAccountsUseCaseProvider).call(accounts, query);
 });
 
 final categoryCountsProvider = Provider<Map<AccountCategory, int>>((ref) {
@@ -163,6 +176,7 @@ class VaultState {
 class VaultController extends AsyncNotifier<VaultState> {
   String? _sessionPassword;
   Timer? _autoLockTimer;
+  bool _isBreachCheckRunning = false;
 
   String get _activeVaultId {
     final settings = ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
@@ -184,6 +198,7 @@ class VaultController extends AsyncNotifier<VaultState> {
 
       _sessionPassword = password;
       _startInactivityTimer();
+      unawaited(_triggerPeriodicBreachCheckIfNeeded());
 
       return VaultState(
         isUnlocked: true,
@@ -207,7 +222,8 @@ class VaultController extends AsyncNotifier<VaultState> {
       return;
     }
 
-    final nextAccounts = [...current.accounts, account];
+    final compromised = await _safeCheckCompromised(account.password);
+    final nextAccounts = [...current.accounts, account.copyWith(isCompromised: compromised)];
     await _saveAndUpdateState(current, nextAccounts);
   }
 
@@ -217,8 +233,10 @@ class VaultController extends AsyncNotifier<VaultState> {
       return;
     }
 
-    final nextAccounts =
-        ref.read(updateAccountUseCaseProvider).call(current.accounts, index, updated);
+    final compromised = await _safeCheckCompromised(updated.password);
+    final nextAccounts = ref
+        .read(updateAccountUseCaseProvider)
+        .call(current.accounts, index, updated.copyWith(isCompromised: compromised));
     await _saveAndUpdateState(current, nextAccounts);
   }
 
@@ -290,6 +308,51 @@ class VaultController extends AsyncNotifier<VaultState> {
     }
 
     _autoLockTimer = Timer(Duration(minutes: minutes), lock);
+  }
+
+  Future<void> _triggerPeriodicBreachCheckIfNeeded() async {
+    if (_isBreachCheckRunning) {
+      return;
+    }
+
+    final settings = ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
+    final lastCheck = settings.lastBreachCheck;
+    final now = DateTime.now().toUtc();
+    if (lastCheck != null && now.difference(lastCheck).inDays < 3) {
+      return;
+    }
+
+    _isBreachCheckRunning = true;
+    try {
+      final current = state.valueOrNull;
+      if (current == null || !current.isUnlocked || _sessionPassword == null) {
+        return;
+      }
+
+      final updatedAccounts =
+          await ref.read(updatePasswordSecurityStatusUseCaseProvider).call(current.accounts);
+
+      await ref.read(saveVaultUseCaseProvider).call(
+            vaultId: _activeVaultId,
+            accounts: updatedAccounts,
+            masterPassword: _sessionPassword!,
+          );
+
+      state = AsyncData(current.copyWith(accounts: updatedAccounts, clearError: true));
+      await ref.read(settingsControllerProvider.notifier).updateLastBreachCheck(now);
+    } catch (_) {
+      // Keep app usable even if external breach API is unreachable.
+    } finally {
+      _isBreachCheckRunning = false;
+    }
+  }
+
+  Future<bool> _safeCheckCompromised(String password) async {
+    try {
+      return await ref.read(checkPasswordBreachUseCaseProvider).call(password);
+    } catch (_) {
+      return false;
+    }
   }
 }
 

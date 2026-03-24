@@ -12,6 +12,7 @@ class AppSettingsModel extends AppSettings {
     required super.themeMode,
     required super.activeVaultId,
     required super.vaults,
+    super.lastBreachCheck,
   });
 
   factory AppSettingsModel.fromEntity(AppSettings settings) {
@@ -23,6 +24,7 @@ class AppSettingsModel extends AppSettings {
       themeMode: settings.themeMode,
       activeVaultId: settings.activeVaultId,
       vaults: settings.vaults,
+      lastBreachCheck: settings.lastBreachCheck,
     );
   }
 
@@ -43,6 +45,7 @@ class AppSettingsModel extends AppSettings {
       themeMode: _themeModeFromString(json['themeMode'] as String?),
       activeVaultId: json['activeVaultId'] as String? ?? fallbackVaults.first.id,
       vaults: fallbackVaults,
+      lastBreachCheck: _dateTimeFromString(json['lastBreachCheck'] as String?),
     );
   }
 
@@ -70,6 +73,13 @@ class AppSettingsModel extends AppSettings {
     };
   }
 
+  static DateTime? _dateTimeFromString(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(value);
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'autoLockTimeout': autoLockTimeout,
@@ -87,6 +97,7 @@ class AppSettingsModel extends AppSettings {
             },
           )
           .toList(),
+      'lastBreachCheck': lastBreachCheck?.toUtc().toIso8601String(),
     };
   }
 }

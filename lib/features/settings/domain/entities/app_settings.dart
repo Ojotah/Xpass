@@ -11,6 +11,7 @@ class AppSettings {
     required this.themeMode,
     required this.activeVaultId,
     required this.vaults,
+    this.lastBreachCheck,
   });
 
   final int autoLockTimeout;
@@ -20,6 +21,7 @@ class AppSettings {
   final ThemeMode themeMode;
   final String activeVaultId;
   final List<AppVault> vaults;
+  final DateTime? lastBreachCheck;
 
   AppVault get activeVault => vaults.firstWhere(
         (vault) => vault.id == activeVaultId,
@@ -36,6 +38,7 @@ class AppSettings {
     vaults: [
       AppVault(id: 'default', name: 'My Vault', passwordHint: ''),
     ],
+    lastBreachCheck: null,
   );
 
   AppSettings copyWith({
@@ -46,6 +49,8 @@ class AppSettings {
     ThemeMode? themeMode,
     String? activeVaultId,
     List<AppVault>? vaults,
+    DateTime? lastBreachCheck,
+    bool clearLastBreachCheck = false,
   }) {
     return AppSettings(
       autoLockTimeout: autoLockTimeout ?? this.autoLockTimeout,
@@ -55,6 +60,8 @@ class AppSettings {
       themeMode: themeMode ?? this.themeMode,
       activeVaultId: activeVaultId ?? this.activeVaultId,
       vaults: vaults ?? this.vaults,
+      lastBreachCheck:
+          clearLastBreachCheck ? null : (lastBreachCheck ?? this.lastBreachCheck),
     );
   }
 }

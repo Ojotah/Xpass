@@ -6,6 +6,7 @@ class AccountModel extends Account {
     required super.username,
     required super.password,
     super.note,
+    super.isCompromised,
   });
 
   factory AccountModel.fromEntity(Account account) {
@@ -14,6 +15,7 @@ class AccountModel extends Account {
       username: account.username,
       password: account.password,
       note: account.note,
+      isCompromised: account.isCompromised,
     );
   }
 
@@ -23,6 +25,7 @@ class AccountModel extends Account {
       username: json['username'] as String? ?? '',
       password: json['password'] as String? ?? '',
       note: json['note'] as String? ?? '',
+      isCompromised: json['isCompromised'] as bool? ?? false,
     );
   }
 
@@ -31,5 +34,6 @@ class AccountModel extends Account {
         'username': username,
         'password': password,
         'note': note,
+        'isCompromised': isCompromised,
       };
 }

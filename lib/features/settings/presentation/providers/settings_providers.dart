@@ -72,6 +72,14 @@ class SettingsController extends AsyncNotifier<AppSettings> {
     state = AsyncData(next);
   }
 
+
+  Future<void> updateLastBreachCheck(DateTime timestamp) async {
+    final current = state.valueOrNull ?? AppSettings.defaults;
+    final next = current.copyWith(lastBreachCheck: timestamp.toUtc());
+    await ref.read(updateSettingsUseCaseProvider).call(next);
+    state = AsyncData(next);
+  }
+
   Future<void> deleteVault(String vaultId) async {
     final current = state.valueOrNull ?? AppSettings.defaults;
     if (current.vaults.length <= 1) {

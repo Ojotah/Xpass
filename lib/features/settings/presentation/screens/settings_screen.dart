@@ -48,11 +48,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           final draft = _draft!;
           final activeVault = draft.activeVault;
 
-          return Column(
+          return Stack(
             children: [
-              Expanded(
+              Positioned.fill(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 92),
                   child: Column(
                     children: [
                       Card(
@@ -177,22 +177,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
               ),
-              SafeArea(
-                top: false,
-                minimum: const EdgeInsets.all(12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => _discard(settings),
-                      child: const Text('Discard changes'),
-                    ),
-                    const SizedBox(width: 10),
-                    FilledButton(
-                      onPressed: _saving ? null : _apply,
-                      child: const Text('Apply'),
-                    ),
-                  ],
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => _discard(settings),
+                        child: const Text('Discard changes'),
+                      ),
+                      const SizedBox(width: 10),
+                      FilledButton(
+                        onPressed: _saving ? null : _apply,
+                        child: const Text('Apply'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

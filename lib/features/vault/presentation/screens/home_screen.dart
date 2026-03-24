@@ -41,7 +41,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       behavior: HitTestBehavior.translucent,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(settings?.activeVault.name ?? 'Vault Accounts'),
+          title: const Text('Vault Accounts'),
           actions: [
             IconButton(
               tooltip: 'Vaults',
@@ -82,7 +82,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Center(
                     child: Text(
                       settings?.activeVault.name ?? 'Vault Accounts',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -94,8 +96,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
                   ),
-                  const SizedBox(height: 8),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Expanded(
                     child: data.accounts.isEmpty
                         ? const Center(child: Text('No accounts yet. Add your first account.'))
@@ -109,13 +110,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     crossAxisCount: 3,
                                     crossAxisSpacing: 10,
                                     mainAxisSpacing: 10,
-                                    childAspectRatio: 1.6,
+                                    childAspectRatio: 1.65,
                                   ),
                                   itemCount: filteredAccounts.length,
                                   itemBuilder: (context, index) {
                                     final account = filteredAccounts[index];
                                     final originalIndex = data.accounts.indexOf(account);
+                                    final cardColor = account.isCompromised
+                                        ? Theme.of(context)
+                                            .colorScheme
+                                            .errorContainer
+                                            .withOpacity(0.45)
+                                        : null;
+
                                     return Card(
+                                      color: cardColor,
                                       clipBehavior: Clip.antiAlias,
                                       child: InkWell(
                                         onTap: () {
@@ -129,24 +138,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           );
                                         },
                                         child: Padding(
-                                          padding: const EdgeInsets.all(12),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 10,
+                                          ),
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Row(
                                                 children: [
-                                                  const Icon(Icons.lock_person_outlined),
-                                                  const SizedBox(width: 8),
                                                   Expanded(
                                                     child: Text(
                                                       account.title,
                                                       maxLines: 1,
                                                       overflow: TextOverflow.ellipsis,
-                                                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                            fontWeight: FontWeight.bold,
-                                                          ),
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .titleLarge
+                                                          ?.copyWith(fontWeight: FontWeight.w800),
                                                     ),
                                                   ),
+                                                  if (account.isCompromised)
+                                                    Tooltip(
+                                                      message: 'Password appears in known breaches',
+                                                      child: Icon(
+                                                        Icons.warning_amber_rounded,
+                                                        color: Theme.of(context).colorScheme.error,
+                                                      ),
+                                                    ),
                                                 ],
                                               ),
                                               const SizedBox(height: 8),
@@ -154,7 +173,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 account.username,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: Theme.of(context).textTheme.bodyLarge,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium
+                                                    ?.copyWith(fontWeight: FontWeight.w600),
                                               ),
                                               const SizedBox(height: 8),
                                               Text(
@@ -162,7 +184,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 maxLines: 2,
                                                 overflow: TextOverflow.ellipsis,
                                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
                                                     ),
                                               ),
                                             ],
