@@ -1,12 +1,14 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/error/exceptions.dart';
 import '../../../../core/utils/password_strength_validator.dart';
 import '../../../settings/domain/entities/app_settings.dart';
 import '../../../settings/domain/entities/app_vault.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
-import 'home_screen.dart';
 import '../providers/vault_providers.dart';
+import 'home_screen.dart';
 
 class SetupScreen extends ConsumerStatefulWidget {
   const SetupScreen({super.key});
@@ -62,6 +64,84 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       }
 
       Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
+    } finally {
+      if (mounted) {
+        setState(() => _isBusy = false);
+      }
+    }
+  }
+
+  Future<void> _importExistingVault() async {
+    setState(() => _isBusy = true);
+    try {
+      final pick = await FilePicker.platform.pickFiles(type: FileType.any);
+      final sourcePath = pick?.files.single.path;
+      if (sourcePath == null) {
+        return;
+      }
+
+      if (!mounted) return;
+      final passwordController = TextEditingController();
+      final hintController = TextEditingController();
+      final imported = await showDialog<(String, String?)>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Import Existing Vault'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Master Password'),
+              ),
+              TextField(
+                controller: hintController,
+                decoration: const InputDecoration(labelText: 'Password Hint (optional)'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop((passwordController.text, hintController.text.trim())),
+              child: const Text('Import'),
+            ),
+          ],
+        ),
+      );
+      passwordController.dispose();
+      hintController.dispose();
+
+      if (imported == null) return;
+
+      await ref.read(importVaultUseCaseProvider).call(vaultId: 'default', sourcePath: sourcePath);
+      await ref.read(vaultControllerProvider.notifier).unlock(imported.$1);
+
+      final nextState = ref.read(vaultControllerProvider);
+      if (nextState.hasError) {
+        throw nextState.error ?? const VaultException('Unable to unlock imported vault.');
+      }
+
+      final settings = AppSettings.defaults.copyWith(
+        vaults: [
+          AppVault(id: 'default', name: 'Imported Vault', passwordHint: imported.$2 ?? ''),
+        ],
+      );
+      await ref.read(settingsControllerProvider.notifier).saveSettings(settings);
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
+    } on WrongPasswordException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid password for imported vault.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Import failed.')),
+      );
     } finally {
       if (mounted) {
         setState(() => _isBusy = false);
@@ -155,6 +235,12 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text('Create Vault'),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _isBusy ? null : _importExistingVault,
+                    icon: const Icon(Icons.upload_file_outlined),
+                    label: const Text('Import Existing Vault'),
                   ),
                 ],
               ),

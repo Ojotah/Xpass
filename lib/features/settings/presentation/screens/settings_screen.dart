@@ -50,7 +50,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           final activeVault = draft.activeVault;
 
           return ListView(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
             children: [
               Card(
                 child: Padding(
@@ -156,23 +156,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ],
                 ),
               ),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _discard(settings),
-                      child: const Text('Discard changes'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(onPressed: _saving ? null : _apply, child: const Text('Apply')),
-                  ),
-                ],
-              ),
             ],
           );
         },
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.all(12),
+        child: Align(
+          alignment: Alignment.bottomRight,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              OutlinedButton(
+                onPressed: settingsState.valueOrNull == null
+                    ? null
+                    : () => _discard(settingsState.valueOrNull!),
+                child: const Text('Discard changes'),
+              ),
+              const SizedBox(width: 10),
+              FilledButton(
+                onPressed: _saving ? null : _apply,
+                child: const Text('Apply'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

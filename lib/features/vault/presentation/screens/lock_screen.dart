@@ -19,6 +19,7 @@ class LockScreen extends ConsumerStatefulWidget {
 class _LockScreenState extends ConsumerState<LockScreen> {
   final _passwordController = TextEditingController();
   bool _biometricTried = false;
+  int _failedAttempts = 0;
 
   @override
   void dispose() {
@@ -68,14 +69,18 @@ class _LockScreenState extends ConsumerState<LockScreen> {
         _ => 'Unable to unlock vault.',
       };
 
+      setState(() => _failedAttempts += 1);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       return;
     }
 
     final unlocked = nextState.valueOrNull?.isUnlocked ?? false;
     if (unlocked) {
+      setState(() => _failedAttempts = 0);
       _passwordController.clear();
       Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
+    } else {
+      setState(() => _failedAttempts += 1);
     }
   }
 
@@ -110,7 +115,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   ),
                   onSubmitted: (_) => _unlock(),
                 ),
-                if (passwordHint.trim().isNotEmpty) ...[
+                if (_failedAttempts >= 3 && passwordHint.trim().isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Text(
                     'Hint: $passwordHint',

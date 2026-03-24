@@ -10,15 +10,19 @@ import '../../../settings/domain/entities/app_settings.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../data/repositories/local_vault_repository.dart';
 import '../../domain/entities/account.dart';
+import '../../domain/entities/account_category.dart';
 import '../../domain/repositories/vault_repository.dart';
 import '../../domain/usecases/change_master_password.dart';
 import '../../domain/usecases/check_vault_exists.dart';
 import '../../domain/usecases/copy_to_clipboard.dart';
 import '../../domain/usecases/delete_account.dart';
 import '../../domain/usecases/delete_vault.dart';
+import '../../domain/usecases/detect_account_category.dart';
 import '../../domain/usecases/export_vault.dart';
 import '../../domain/usecases/generate_password.dart';
 import '../../domain/usecases/import_vault.dart';
+import '../../domain/usecases/get_accounts_by_category.dart';
+import '../../domain/usecases/get_category_counts.dart';
 import '../../domain/usecases/initialize_vault.dart';
 import '../../domain/usecases/save_vault.dart';
 import '../../domain/usecases/search_accounts.dart';
@@ -97,13 +101,36 @@ final updateAccountUseCaseProvider = Provider<UpdateAccount>((ref) {
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
+final detectAccountCategoryUseCaseProvider = Provider<DetectAccountCategory>((ref) {
+  return const DetectAccountCategory();
+});
+
+final getAccountsByCategoryUseCaseProvider = Provider<GetAccountsByCategory>((ref) {
+  return GetAccountsByCategory(ref.watch(detectAccountCategoryUseCaseProvider));
+});
+
+final getCategoryCountsUseCaseProvider = Provider<GetCategoryCounts>((ref) {
+  return GetCategoryCounts(ref.watch(detectAccountCategoryUseCaseProvider));
+});
+
+final selectedCategoryProvider = StateProvider<AccountCategory>((ref) => AccountCategory.all);
+
 final filteredAccountsProvider = Provider<List<Account>>((ref) {
   final accounts = ref.watch(
     vaultControllerProvider.select((value) => value.valueOrNull?.accounts ?? const []),
   );
   final query = ref.watch(searchQueryProvider);
+  final category = ref.watch(selectedCategoryProvider);
 
-  return ref.watch(searchAccountsUseCaseProvider).call(accounts, query);
+  final byCategory = ref.watch(getAccountsByCategoryUseCaseProvider).call(accounts, category);
+  return ref.watch(searchAccountsUseCaseProvider).call(byCategory, query);
+});
+
+final categoryCountsProvider = Provider<Map<AccountCategory, int>>((ref) {
+  final accounts = ref.watch(
+    vaultControllerProvider.select((value) => value.valueOrNull?.accounts ?? const []),
+  );
+  return ref.watch(getCategoryCountsUseCaseProvider).call(accounts);
 });
 
 class VaultState {

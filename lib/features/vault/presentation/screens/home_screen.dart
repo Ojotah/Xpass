@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
-import '../providers/vault_providers.dart';
 import '../../../vault_switching/presentation/screens/vault_selection_screen.dart';
-import '../widgets/account_list_tile.dart';
+import '../../domain/entities/account_category.dart';
+import '../providers/vault_providers.dart';
 import 'account_details_screen.dart';
 import 'add_account_screen.dart';
 import 'lock_screen.dart';
@@ -19,28 +19,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden ||
-        state == AppLifecycleState.paused) {
-      ref.read(vaultControllerProvider.notifier).lock();
-    }
-  }
-
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(vaultControllerProvider, (previous, next) {
@@ -56,6 +35,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final vaultState = ref.watch(vaultControllerProvider);
     final filteredAccounts = ref.watch(filteredAccountsProvider);
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
+    final selectedCategory = ref.watch(selectedCategoryProvider);
+    final categoryCounts = ref.watch(categoryCountsProvider);
 
     return GestureDetector(
       onTap: () => ref.read(vaultControllerProvider.notifier).registerInteraction(),
@@ -99,14 +80,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
             return Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TextField(
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.search),
                       hintText: 'Search by title or username',
                     ),
-                    onChanged: (value) =>
-                        ref.read(searchQueryProvider.notifier).state = value,
+                    onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
+                  ),
+                  const SizedBox(height: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: AccountCategory.values.map((category) {
+                        final count = categoryCounts[category] ?? 0;
+                        final selected = selectedCategory == category;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            selected: selected,
+                            label: Text('${category.label} ($count)'),
+                            onSelected: (_) {
+                              ref.read(selectedCategoryProvider.notifier).state = category;
+                            },
+                          ),
+                        );
+                      }).toList(growable: false),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
@@ -114,25 +115,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                         ? const Center(child: Text('No accounts yet. Add your first account.'))
                         : filteredAccounts.isEmpty
                             ? const Center(child: Text('No accounts found.'))
-                            : ListView.builder(
-                                itemCount: filteredAccounts.length,
-                                itemBuilder: (context, index) {
-                                  final account = filteredAccounts[index];
-                                  final originalIndex = data.accounts.indexOf(account);
-                                  return AccountListTile(
-                                    account: account,
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) => AccountDetailsScreen(
-                                            index: originalIndex,
-                                            account: account,
+                            : AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 220),
+                                child: GridView.builder(
+                                  key: ValueKey('${selectedCategory.name}-${filteredAccounts.length}'),
+                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 3,
+                                    crossAxisSpacing: 10,
+                                    mainAxisSpacing: 10,
+                                    childAspectRatio: 2.2,
+                                  ),
+                                  itemCount: filteredAccounts.length,
+                                  itemBuilder: (context, index) {
+                                    final account = filteredAccounts[index];
+                                    final originalIndex = data.accounts.indexOf(account);
+                                    return Card(
+                                      clipBehavior: Clip.antiAlias,
+                                      child: InkWell(
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute<void>(
+                                              builder: (_) => AccountDetailsScreen(
+                                                index: originalIndex,
+                                                account: account,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.lock_person_outlined),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      account.title,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: Theme.of(context).textTheme.titleSmall,
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      account.username,
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: Theme.of(context).textTheme.bodySmall,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      );
-                                    },
-                                  );
-                                },
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                   ),
                 ],

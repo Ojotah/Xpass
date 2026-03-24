@@ -20,28 +20,7 @@ class XPassApp extends ConsumerStatefulWidget {
   ConsumerState<XPassApp> createState() => _XPassAppState();
 }
 
-class _XPassAppState extends ConsumerState<XPassApp> with WidgetsBindingObserver {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.hidden) {
-      ref.read(vaultControllerProvider.notifier).lock();
-    }
-  }
-
+class _XPassAppState extends ConsumerState<XPassApp> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
