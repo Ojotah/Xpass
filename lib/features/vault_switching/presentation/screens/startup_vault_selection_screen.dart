@@ -63,6 +63,8 @@ class StartupVaultSelectionScreen extends ConsumerWidget {
       return;
     }
 
+    if (!context.mounted) return;
+
     final nameController = TextEditingController(text: 'Imported Vault');
     final hintController = TextEditingController();
     final data = await showDialog<(String, String)?>(

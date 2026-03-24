@@ -82,9 +82,9 @@ class AppStartGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
-    final existingVaults = ref.watch(_existingVaultsProvider(settings.vaults));
+    final startupVaults = ref.watch(_startupVaultsProvider(settings.vaults));
 
-    return existingVaults.when(
+    return startupVaults.when(
       loading: () => const _SplashScreen(),
       error: (_, __) => const Scaffold(body: Center(child: Text('Could not start app.'))),
       data: (vaults) {
@@ -120,7 +120,10 @@ class _SplashScreen extends StatelessWidget {
   }
 }
 
-final _existingVaultsProvider = FutureProvider.family<List<AppVault>, List<AppVault>>((ref, vaults) async {
+final _startupVaultsProvider = FutureProvider.family<List<AppVault>, List<AppVault>>((ref, vaults) async {
+  const minimumSplashDuration = Duration(seconds: 5);
+  final startedAt = DateTime.now();
+
   final useCase = ref.read(checkVaultExistsUseCaseProvider);
   final existing = <AppVault>[];
 
@@ -129,6 +132,12 @@ final _existingVaultsProvider = FutureProvider.family<List<AppVault>, List<AppVa
     if (exists) {
       existing.add(vault);
     }
+  }
+
+  final elapsed = DateTime.now().difference(startedAt);
+  final remaining = minimumSplashDuration - elapsed;
+  if (!remaining.isNegative) {
+    await Future<void>.delayed(remaining);
   }
 
   return existing;
