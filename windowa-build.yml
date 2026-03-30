@@ -1,0 +1,42 @@
+# Builds a release Windows desktop bundle on every push to main.
+# Artifact: full Release folder (xpass.exe + DLLs + data/). Download from Actions → workflow run → Artifacts.
+
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Dependencies
+        run: flutter pub get
+
+      - name: Build (release)
+        run: flutter build windows --release
+
+      - name: Upload Release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: xpass-windows-release
+          path: build/windows/x64/runner/Release/
+          if-no-files-found: error
