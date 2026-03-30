@@ -33,18 +33,6 @@ class AppSettingsModel extends AppSettings {
         .map((item) => _vaultFromJson(item as Map<String, dynamic>))
         .toList();
 
-    final fallbackVaults = vaults.isEmpty
-        ? [
-            AppVault(
-              id: 'default',
-              name: 'My Vault',
-              passwordHint: '',
-              createdAt: DateTime.utc(1970, 1, 1),
-              fileName: 'My Vault.dat',
-            ),
-          ]
-        : vaults;
-
     return AppSettingsModel(
       autoLockTimeout: (json['autoLockTimeout'] as num?)?.toInt() ?? 5,
       clipboardClearEnabled: json['clipboardClearEnabled'] as bool? ?? true,
@@ -52,9 +40,9 @@ class AppSettingsModel extends AppSettings {
           (json['clipboardClearDuration'] as num?)?.toInt() ?? 15,
       biometricEnabled: json['biometricEnabled'] as bool? ?? false,
       themeMode: _themeModeFromString(json['themeMode'] as String?),
-      activeVaultId:
-          json['activeVaultId'] as String? ?? fallbackVaults.first.id,
-      vaults: fallbackVaults,
+      activeVaultId: json['activeVaultId'] as String? ??
+          (vaults.isEmpty ? '' : vaults.first.id),
+      vaults: vaults,
       lastBreachCheck: _dateTimeFromString(json['lastBreachCheck'] as String?),
     );
   }

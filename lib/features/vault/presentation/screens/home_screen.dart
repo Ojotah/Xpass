@@ -5,6 +5,7 @@ import '../../../settings/presentation/providers/settings_providers.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../vault_switching/presentation/screens/vault_selection_screen.dart';
 import '../providers/vault_providers.dart';
+import '../widgets/account_password_card.dart';
 import 'account_details_screen.dart';
 import 'add_account_screen.dart';
 import 'lock_screen.dart';
@@ -43,11 +44,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
+  Color _riskColor(BuildContext context, int riskScore) {
+    final scheme = Theme.of(context).colorScheme;
+    if (riskScore >= 70) {
+      return scheme.error;
+    }
+    if (riskScore >= 30) {
+      return Colors.orange;
+    }
+    return Colors.green;
+  }
+
   @override
   Widget build(BuildContext context) {
     final vaultState = ref.watch(vaultControllerProvider);
     final filteredAccounts = ref.watch(filteredAccountsProvider);
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
+    final scheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
       onTap: () =>
@@ -57,14 +70,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       behavior: HitTestBehavior.translucent,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Vault Accounts'),
+          title: const Text('Accounts'),
           actions: [
             IconButton(
               tooltip: 'Vaults',
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                      builder: (_) => const VaultSelectionScreen()),
+                    builder: (_) => const VaultSelectionScreen(),
+                  ),
                 );
               },
               icon: const Icon(Icons.folder_copy_outlined),
@@ -74,7 +88,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                      builder: (_) => const SettingsScreen()),
+                    builder: (_) => const SettingsScreen(),
+                  ),
                 );
               },
               icon: const Icon(Icons.settings_outlined),
@@ -89,54 +104,75 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         body: vaultState.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => const Center(
-            child: Text(
-                'Something went wrong. Please lock and unlock vault again.'),
+          error: (_, __) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, size: 48, color: scheme.error),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Something went wrong. Lock and unlock the vault to try again.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ],
+              ),
+            ),
           ),
           data: (data) {
+            final vaultTitle = settings?.activeVaultOrNull?.name ?? 'Vault';
+
             return Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Center(
-                    child: Text(
-                      settings?.activeVault.name ?? 'Vault Accounts',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
-                      textAlign: TextAlign.center,
-                    ),
+                  Text(
+                    vaultTitle,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${data.accounts.length} saved ${data.accounts.length == 1 ? 'entry' : 'entries'}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
                   TextField(
                     decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search),
+                      prefixIcon: Icon(Icons.search_rounded),
                       hintText: 'Search by title or username',
                     ),
                     onChanged: (value) =>
                         ref.read(searchQueryProvider.notifier).state = value,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
                   Expanded(
                     child: data.accounts.isEmpty
-                        ? const Center(
-                            child: Text(
-                                'No accounts yet. Add your first account.'))
+                        ? _EmptyAccountsState(scheme: scheme)
                         : filteredAccounts.isEmpty
-                            ? const Center(child: Text('No accounts found.'))
+                            ? _NoSearchResultsState(scheme: scheme)
                             : AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 220),
+                                duration: const Duration(milliseconds: 280),
+                                switchInCurve: Curves.easeOutCubic,
+                                switchOutCurve: Curves.easeInCubic,
                                 child: GridView.builder(
                                   key: ValueKey(
-                                      'accounts-grid-${filteredAccounts.length}'),
+                                    'grid-${filteredAccounts.length}',
+                                  ),
                                   gridDelegate:
-                                      const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 3,
-                                    crossAxisSpacing: 10,
-                                    mainAxisSpacing: 10,
-                                    childAspectRatio: 1.85,
+                                      const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 380,
+                                    crossAxisSpacing: 16,
+                                    mainAxisSpacing: 16,
+                                    childAspectRatio: 1.75,
                                   ),
                                   itemCount: filteredAccounts.length,
                                   itemBuilder: (context, index) {
@@ -146,115 +182,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     final riskColor =
                                         _riskColor(context, account.riskScore);
 
-                                    return Card(
-                                      clipBehavior: Clip.antiAlias,
-                                      child: InkWell(
-                                        onTap: () {
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute<void>(
-                                              builder: (_) =>
-                                                  AccountDetailsScreen(
-                                                index: originalIndex,
-                                                account: account,
-                                              ),
+                                    return AccountPasswordCard(
+                                      account: account,
+                                      riskColor: riskColor,
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          PageRouteBuilder<void>(
+                                            pageBuilder: (_, __, ___) =>
+                                                AccountDetailsScreen(
+                                              index: originalIndex,
+                                              account: account,
                                             ),
-                                          );
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 8,
+                                            transitionsBuilder:
+                                                (_, animation, __, child) {
+                                              return FadeTransition(
+                                                opacity: animation,
+                                                child: child,
+                                              );
+                                            },
+                                            transitionDuration: const Duration(
+                                              milliseconds: 220,
+                                            ),
                                           ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      account.title,
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .titleLarge
-                                                          ?.copyWith(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w800),
-                                                    ),
-                                                  ),
-                                                  Icon(
-                                                    Icons.shield,
-                                                    size: 18,
-                                                    color: riskColor,
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 6),
-                                              LinearProgressIndicator(
-                                                value: account.riskScore / 100,
-                                                minHeight: 4,
-                                                color: riskColor,
-                                                backgroundColor: Theme.of(
-                                                        context)
-                                                    .colorScheme
-                                                    .surfaceContainerHighest,
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Text(
-                                                account.username,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .titleMedium
-                                                    ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.w600),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Text(
-                                                account.note.trim().isEmpty
-                                                    ? 'No note'
-                                                    : account.note,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodySmall
-                                                    ?.copyWith(
-                                                      color: Theme.of(context)
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                                    ),
-                                              ),
-                                              const Spacer(),
-                                              Wrap(
-                                                spacing: 4,
-                                                runSpacing: 2,
-                                                children: [
-                                                  if (account.isCompromised)
-                                                    _riskBadge(
-                                                        context,
-                                                        'Leaked',
-                                                        Colors.red.shade700),
-                                                  if (account.isWeak)
-                                                    _riskBadge(context, 'Weak',
-                                                        Colors.orange.shade700),
-                                                  if (account.isReused)
-                                                    _riskBadge(
-                                                        context,
-                                                        'Reused',
-                                                        Colors.amber.shade800),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
+                                        );
+                                      },
                                     );
                                   },
                                 ),
@@ -265,42 +216,88 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             );
           },
         ),
-        floatingActionButton: FloatingActionButton(
+        floatingActionButton: FloatingActionButton.extended(
           onPressed: () async {
             await Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AddAccountScreen()),
+              MaterialPageRoute<void>(
+                builder: (_) => const AddAccountScreen(),
+              ),
             );
           },
-          child: const Icon(Icons.add),
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('Add'),
         ),
       ),
     );
   }
+}
 
-  Color _riskColor(BuildContext context, int riskScore) {
-    if (riskScore >= 70) {
-      return Theme.of(context).colorScheme.error;
-    }
-    if (riskScore >= 30) {
-      return Colors.orange;
-    }
-    return Colors.green;
-  }
+class _EmptyAccountsState extends StatelessWidget {
+  const _EmptyAccountsState({required this.scheme});
 
-  Widget _riskBadge(BuildContext context, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.password_rounded,
+              size: 56,
+              color: scheme.primary.withValues(alpha: 0.65),
             ),
+            const SizedBox(height: 20),
+            Text(
+              'No accounts yet',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Add your first password entry with the button below.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NoSearchResultsState extends StatelessWidget {
+  const _NoSearchResultsState({required this.scheme});
+
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.search_off_rounded, size: 48, color: scheme.outline),
+          const SizedBox(height: 12),
+          Text(
+            'No matching accounts',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Try a different search term.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+          ),
+        ],
       ),
     );
   }

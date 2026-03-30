@@ -23,27 +23,32 @@ class AppSettings {
   final List<AppVault> vaults;
   final DateTime? lastBreachCheck;
 
-  AppVault get activeVault => vaults.firstWhere(
-        (vault) => vault.id == activeVaultId,
-        orElse: () => vaults.first,
-      );
+  /// Selected vault, or first vault if the id is missing, or null if there are none.
+  AppVault? get activeVaultOrNull {
+    if (vaults.isEmpty) return null;
+    if (activeVaultId.isEmpty) return vaults.first;
+    for (final v in vaults) {
+      if (v.id == activeVaultId) return v;
+    }
+    return vaults.first;
+  }
 
-  static final defaults = AppSettings(
+  AppVault get activeVault {
+    final v = activeVaultOrNull;
+    if (v == null) {
+      throw StateError('No vault configured');
+    }
+    return v;
+  }
+
+  static const defaults = AppSettings(
     autoLockTimeout: 5,
     clipboardClearEnabled: true,
     clipboardClearDuration: 15,
     biometricEnabled: false,
     themeMode: ThemeMode.system,
-    activeVaultId: 'default',
-    vaults: [
-      AppVault(
-        id: 'default',
-        name: 'My Vault',
-        passwordHint: '',
-        createdAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-        fileName: 'My Vault.dat',
-      ),
-    ],
+    activeVaultId: '',
+    vaults: [],
     lastBreachCheck: null,
   );
 

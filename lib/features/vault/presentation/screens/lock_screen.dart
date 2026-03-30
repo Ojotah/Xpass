@@ -20,6 +20,7 @@ class LockScreen extends ConsumerStatefulWidget {
 class _LockScreenState extends ConsumerState<LockScreen> {
   final _passwordController = TextEditingController();
   bool _biometricTried = false;
+  int _failedAttempts = 0;
 
   @override
   void dispose() {
@@ -50,8 +51,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-          content: Text(
-              'Biometric verification complete. Enter password to unlock.')),
+        content: Text(
+          'Biometric verification complete. Enter password to unlock.',
+        ),
+      ),
     );
   }
 
@@ -66,6 +69,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
     final nextState = ref.read(vaultControllerProvider);
     if (nextState.hasError) {
+      setState(() => _failedAttempts += 1);
       final error = nextState.error;
       final message = error == null
           ? 'Unable to unlock vault.'
@@ -78,6 +82,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
     final unlocked = nextState.valueOrNull?.isUnlocked ?? false;
     if (unlocked) {
+      setState(() => _failedAttempts = 0);
       _passwordController.clear();
       Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
     }
@@ -85,6 +90,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
   Future<void> _chooseAnotherVault() async {
     _passwordController.clear();
+    setState(() => _failedAttempts = 0);
     final settings = ref.read(settingsControllerProvider).valueOrNull;
     if (settings == null) {
       return;
@@ -105,61 +111,145 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     final vaultState = ref.watch(vaultControllerProvider);
     final isBusy = vaultState.isLoading;
     final activeVault =
-        ref.watch(settingsControllerProvider).valueOrNull?.activeVault;
+        ref.watch(settingsControllerProvider).valueOrNull?.activeVaultOrNull;
     final vaultName = activeVault?.name ?? 'Vault';
     final passwordHint = activeVault?.passwordHint ?? '';
+    final showHint = _failedAttempts > 0 && passwordHint.trim().isNotEmpty;
+
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 380),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Unlock $vaultName',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                  textAlign: TextAlign.center,
-                ),
-                if (passwordHint.trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Hint: $passwordHint',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              scheme.surface,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Material(
+                  elevation: 2,
+                  shadowColor: scheme.shadow,
+                  surfaceTintColor: scheme.surfaceTint,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Padding(
+                    padding: const EdgeInsets.all(28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Icon(
+                          Icons.lock_outline_rounded,
+                          size: 56,
+                          color: scheme.primary,
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Unlock vault',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          vaultName,
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: scheme.primary,
+                                  ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (showHint) ...[
+                          const SizedBox(height: 16),
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            child: Container(
+                              key: ValueKey(passwordHint),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: scheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: scheme.outlineVariant.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.lightbulb_outline_rounded,
+                                    size: 20,
+                                    color: scheme.secondary,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Hint: $passwordHint',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                            height: 1.35,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          textInputAction: TextInputAction.done,
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Master password',
+                            prefixIcon: Icon(Icons.key_rounded),
+                          ),
+                          onSubmitted: (_) => _unlock(),
+                        ),
+                        const SizedBox(height: 20),
+                        FilledButton(
+                          onPressed: isBusy ? null : _unlock,
+                          child: isBusy
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : const Text('Unlock'),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: isBusy ? null : _chooseAnotherVault,
+                          icon: const Icon(Icons.swap_horiz_rounded),
+                          label: const Text('Choose another vault'),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-                const SizedBox(height: 24),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Master Password',
-                    border: OutlineInputBorder(),
-                  ),
-                  onSubmitted: (_) => _unlock(),
                 ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: isBusy ? null : _unlock,
-                  child: isBusy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Unlock'),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  onPressed: isBusy ? null : _chooseAnotherVault,
-                  icon: const Icon(Icons.swap_horiz),
-                  label: const Text('Choose another vault'),
-                ),
-              ],
+              ),
             ),
           ),
         ),

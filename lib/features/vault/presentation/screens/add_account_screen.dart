@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/section_header.dart';
 import '../../domain/entities/account.dart';
 import '../../../settings/domain/entities/app_settings.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
@@ -94,6 +95,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
           includeSymbols: _includeSymbols,
         );
     _passwordController.text = generated;
+    setState(() {});
   }
 
   Future<void> _copyPassword() async {
@@ -117,7 +119,8 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.isEdit ? 'Edit Account' : 'Add Account';
+    final title = widget.isEdit ? 'Edit account' : 'Add account';
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
@@ -125,61 +128,72 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 520),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const SectionHeader(
+                    icon: Icons.badge_outlined,
+                    title: 'Account',
+                    subtitle: 'Title and username are shown in the list.',
+                  ),
                   TextFormField(
                     controller: _titleController,
-                    decoration: const InputDecoration(labelText: 'Title'),
+                    decoration: const InputDecoration(
+                      labelText: 'Title',
+                      hintText: 'e.g. Banking, Email',
+                      prefixIcon: Icon(Icons.title_rounded),
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
                     validator: (value) =>
                         (value == null || value.trim().isEmpty)
                             ? 'Required'
                             : null,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _usernameController,
-                    decoration: const InputDecoration(labelText: 'Username'),
+                    decoration: const InputDecoration(
+                      labelText: 'Username or email',
+                      prefixIcon: Icon(Icons.person_outline_rounded),
+                    ),
                     validator: (value) =>
                         (value == null || value.trim().isEmpty)
                             ? 'Required'
                             : null,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+                  const SectionHeader(
+                    icon: Icons.password_rounded,
+                    title: 'Password',
+                  ),
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Password'),
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: Icon(Icons.key_rounded),
+                    ),
                     validator: (value) =>
                         (value == null || value.isEmpty) ? 'Required' : null,
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _noteController,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Note (optional)',
-                      alignLabelWithHint: true,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      OutlinedButton.icon(
+                      FilledButton.tonalIcon(
                         onPressed: _generatePassword,
-                        icon: const Icon(Icons.password),
+                        icon: const Icon(Icons.auto_fix_high_rounded),
                         label: const Text('Generate'),
                       ),
                       OutlinedButton.icon(
                         onPressed: _passwordController.text.isEmpty
                             ? null
                             : _copyPassword,
-                        icon: const Icon(Icons.copy),
+                        icon: const Icon(Icons.copy_rounded),
                         label: const Text('Copy'),
                       ),
                     ],
@@ -187,12 +201,19 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                   const SizedBox(height: 12),
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Generator settings',
-                              style: Theme.of(context).textTheme.titleMedium),
+                          Text(
+                            'Generator',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
                           Slider(
                             min: 8,
                             max: 32,
@@ -202,26 +223,33 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                             onChanged: (value) =>
                                 setState(() => _length = value),
                           ),
-                          Text('Length: ${_length.round()}'),
+                          Text(
+                            'Length: ${_length.round()}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                           SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
                             value: _includeUppercase,
                             title: const Text('Uppercase'),
                             onChanged: (value) =>
                                 setState(() => _includeUppercase = value),
                           ),
                           SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
                             value: _includeLowercase,
                             title: const Text('Lowercase'),
                             onChanged: (value) =>
                                 setState(() => _includeLowercase = value),
                           ),
                           SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
                             value: _includeNumbers,
                             title: const Text('Numbers'),
                             onChanged: (value) =>
                                 setState(() => _includeNumbers = value),
                           ),
                           SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
                             value: _includeSymbols,
                             title: const Text('Symbols'),
                             onChanged: (value) =>
@@ -231,11 +259,36 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+                  const SectionHeader(
+                    icon: Icons.notes_rounded,
+                    title: 'Notes',
+                    subtitle: 'Optional — safe to leave empty.',
+                  ),
+                  TextFormField(
+                    controller: _noteController,
+                    minLines: 3,
+                    maxLines: 6,
+                    decoration: const InputDecoration(
+                      labelText: 'Note',
+                      hintText: 'Recovery codes, URL, or context…',
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
                   FilledButton.icon(
                     onPressed: _isSaving ? null : _save,
-                    icon: const Icon(Icons.save),
-                    label: Text(_isSaving ? 'Saving...' : 'Save'),
+                    icon: _isSaving
+                        ? SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: scheme.onPrimary,
+                            ),
+                          )
+                        : const Icon(Icons.save_rounded),
+                    label: Text(_isSaving ? 'Saving…' : 'Save'),
                   ),
                 ],
               ),

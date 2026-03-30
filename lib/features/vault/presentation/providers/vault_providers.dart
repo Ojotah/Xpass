@@ -33,6 +33,7 @@ import '../../domain/usecases/generate_password.dart';
 import '../../domain/usecases/get_accounts_by_category.dart';
 import '../../domain/usecases/get_category_counts.dart';
 import '../../domain/usecases/import_vault.dart';
+import '../../domain/usecases/peek_vault_metadata.dart';
 import '../../domain/usecases/initialize_vault.dart';
 import '../../domain/usecases/save_vault.dart';
 import '../../domain/usecases/search_accounts.dart';
@@ -77,6 +78,10 @@ final exportVaultUseCaseProvider = Provider<ExportVault>((ref) {
 
 final importVaultUseCaseProvider = Provider<ImportVault>((ref) {
   return ImportVault(ref.watch(vaultRepositoryProvider));
+});
+
+final peekVaultMetadataUseCaseProvider = Provider<PeekVaultMetadata>((ref) {
+  return PeekVaultMetadata(ref.watch(vaultRepositoryProvider));
 });
 
 final renameVaultUseCaseProvider = Provider<RenameVault>((ref) {
@@ -225,21 +230,28 @@ class VaultController extends AsyncNotifier<VaultState> {
   bool _isBreachCheckRunning = false;
 
   String get _activeVaultId {
-    final settings = ref.read(settingsControllerProvider).valueOrNull ??
-        AppSettings.defaults;
+    final settings = ref.read(settingsControllerProvider).valueOrNull;
+    if (settings == null || settings.vaults.isEmpty) return '';
     return settings.activeVaultId;
   }
 
   String get _activeVaultFileName {
-    final settings = ref.read(settingsControllerProvider).valueOrNull ??
-        AppSettings.defaults;
-    return settings.activeVault.fileName;
+    final settings = ref.read(settingsControllerProvider).valueOrNull;
+    final vault = settings?.activeVaultOrNull;
+    if (vault == null) return '';
+    return vault.fileName;
   }
 
   VaultMetadata get _activeVaultMetadata {
-    final settings = ref.read(settingsControllerProvider).valueOrNull ??
-        AppSettings.defaults;
-    final vault = settings.activeVault;
+    final vault =
+        ref.read(settingsControllerProvider).valueOrNull?.activeVaultOrNull;
+    if (vault == null) {
+      return VaultMetadata(
+        name: '',
+        hint: '',
+        createdAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      );
+    }
     return VaultMetadata(
       name: vault.name,
       hint: vault.passwordHint,

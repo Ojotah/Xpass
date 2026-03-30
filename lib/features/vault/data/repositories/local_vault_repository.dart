@@ -155,6 +155,16 @@ class LocalVaultRepository implements VaultRepository {
   }
 
   @override
+  Future<VaultMetadata> peekMetadataFromImportPath(String sourcePath) async {
+    final source = File(sourcePath);
+    if (!await source.exists()) {
+      throw const VaultException('Selected import file does not exist.');
+    }
+    final document = await _readVaultDocument(source);
+    return document.metadata;
+  }
+
+  @override
   Future<VaultMetadata> importVault({
     required String vaultId,
     required String vaultFileName,

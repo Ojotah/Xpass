@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/widgets/section_header.dart';
 import '../../domain/entities/account.dart';
 import '../../../settings/domain/entities/app_settings.dart';
 import '../../../settings/presentation/providers/settings_providers.dart';
@@ -51,11 +52,13 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
             content: const Text('This action cannot be undone.'),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel')),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
               FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Delete')),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Delete'),
+              ),
             ],
           ),
         ) ??
@@ -72,93 +75,177 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final a = widget.account;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Account Details')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.account.title,
-                    style: Theme.of(context).textTheme.headlineSmall),
-                const SizedBox(height: 12),
-                Text('Username: ${widget.account.username}'),
-                const SizedBox(height: 8),
-                Text('Risk score: ${widget.account.riskScore}/100'),
-                const SizedBox(height: 12),
-                if (widget.account.isCompromised) ...[
-                  Row(
+      appBar: AppBar(
+        title: const Text('Details'),
+        actions: [
+          IconButton(
+            tooltip: 'Edit',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => AddAccountScreen(
+                    index: widget.index,
+                    initialAccount: widget.account,
+                  ),
+                ),
+              );
+              if (!context.mounted) return;
+              Navigator.of(context).pop();
+            },
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              a.title,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              a.username,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+            ),
+            const SizedBox(height: 20),
+            const SectionHeader(
+              title: 'Safety',
+              icon: Icons.shield_outlined,
+            ),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.analytics_outlined,
+                      color: scheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Risk score',
+                            style: Theme.of(context).textTheme.labelMedium,
+                          ),
+                          Text(
+                            '${a.riskScore} / 100',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (a.isCompromised) ...[
+              const SizedBox(height: 12),
+              Material(
+                color: scheme.errorContainer.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.warning_amber_rounded,
-                          color: Theme.of(context).colorScheme.error),
-                      const SizedBox(width: 8),
+                      Icon(Icons.warning_amber_rounded, color: scheme.error),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'This password appears in known breach datasets. Change it soon.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(
-                                  color: Theme.of(context).colorScheme.error),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: scheme.onErrorContainer,
+                                  ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                ],
-                if (widget.account.note.trim().isNotEmpty) ...[
-                  Text('Note: ${widget.account.note}'),
-                  const SizedBox(height: 12),
-                ],
-                Text(
-                  'Password: ${_showPassword ? widget.account.password : '••••••••••'}',
                 ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () =>
-                          setState(() => _showPassword = !_showPassword),
-                      icon: Icon(_showPassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
-                      label: Text(_showPassword ? 'Hide' : 'Show'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _copyPassword,
-                      icon: const Icon(Icons.copy),
-                      label: const Text('Copy password'),
-                    ),
-                    FilledButton.icon(
-                      onPressed: () async {
-                        await Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => AddAccountScreen(
-                              index: widget.index,
-                              initialAccount: widget.account,
-                            ),
-                          ),
-                        );
-                        if (!context.mounted) return;
-                        Navigator.of(context).pop();
-                      },
-                      icon: const Icon(Icons.edit),
-                      label: const Text('Edit'),
-                    ),
-                    TextButton.icon(
-                      onPressed: _delete,
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Delete'),
-                    ),
-                  ],
+              ),
+            ],
+            if (a.note.trim().isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const SectionHeader(
+                title: 'Note',
+                icon: Icons.notes_rounded,
+              ),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    a.note,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          height: 1.45,
+                        ),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            const SectionHeader(
+              title: 'Password',
+              icon: Icons.key_rounded,
+            ),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: SelectableText(
+                  _showPassword ? a.password : List.filled(12, '•').join(),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontFamily: 'monospace',
+                        letterSpacing: _showPassword ? 0 : 2,
+                      ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () {
+                    setState(() => _showPassword = !_showPassword);
+                  },
+                  icon: Icon(
+                    _showPassword ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  label: Text(_showPassword ? 'Hide' : 'Reveal'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _copyPassword,
+                  icon: const Icon(Icons.copy_rounded),
+                  label: const Text('Copy'),
+                ),
+                TextButton.icon(
+                  onPressed: _delete,
+                  icon: Icon(Icons.delete_outline, color: scheme.error),
+                  label: Text(
+                    'Delete',
+                    style: TextStyle(color: scheme.error),
+                  ),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );

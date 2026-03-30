@@ -4,11 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/utils/password_strength_validator.dart';
+import '../../../../core/widgets/section_header.dart';
 import '../../../../core/widgets/top_right_notification.dart';
 import '../../../vault/presentation/providers/vault_providers.dart';
 import '../../../vault/domain/entities/vault_metadata.dart';
 import '../../domain/entities/app_settings.dart';
 import '../../domain/entities/app_vault.dart';
+import '../../domain/vault_name_utils.dart';
 import '../providers/settings_providers.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -44,6 +46,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final settingsState = ref.watch(settingsControllerProvider);
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -53,202 +56,275 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         data: (settings) {
           _draft ??= settings;
           final draft = _draft!;
-          final activeVault = draft.activeVault;
+          final activeVault = draft.activeVaultOrNull;
+          if (activeVault == null) {
+            return const Center(child: Text('No vault configured.'));
+          }
 
-          return Stack(
-            children: [
-              Positioned.fill(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 92),
-                  child: Column(
-                    children: [
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Appearance',
-                                  style:
-                                      Theme.of(context).textTheme.titleLarge),
-                              DropdownButtonFormField<ThemeMode>(
-                                initialValue: draft.themeMode,
-                                decoration:
-                                    const InputDecoration(labelText: 'Theme'),
-                                items: const [
-                                  DropdownMenuItem(
-                                      value: ThemeMode.system,
-                                      child: Text('System')),
-                                  DropdownMenuItem(
-                                      value: ThemeMode.light,
-                                      child: Text('Light')),
-                                  DropdownMenuItem(
-                                      value: ThemeMode.dark,
-                                      child: Text('Dark')),
-                                ],
-                                onChanged: (value) => setState(() =>
-                                    _draft = draft.copyWith(themeMode: value)),
-                              ),
-                            ],
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionHeader(
+                  icon: Icons.palette_outlined,
+                  title: 'Appearance',
+                  subtitle: 'Theme follows your preference until you apply.',
+                ),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DropdownButtonFormField<ThemeMode>(
+                          key: ValueKey(draft.themeMode),
+                          initialValue: draft.themeMode,
+                          decoration: const InputDecoration(
+                            labelText: 'Theme',
                           ),
-                        ),
-                      ),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Security',
-                                  style:
-                                      Theme.of(context).textTheme.titleLarge),
-                              SwitchListTile(
-                                value: draft.biometricEnabled,
-                                title: const Text('Enable biometric unlock'),
-                                onChanged: (value) => setState(() => _draft =
-                                    draft.copyWith(biometricEnabled: value)),
-                              ),
-                              DropdownButtonFormField<int>(
-                                initialValue: draft.autoLockTimeout,
-                                decoration: const InputDecoration(
-                                    labelText: 'Auto-lock timeout (minutes)'),
-                                items: const [1, 3, 5, 10, 15]
-                                    .map((v) => DropdownMenuItem(
-                                        value: v, child: Text('$v')))
-                                    .toList(),
-                                onChanged: (value) => setState(() => _draft =
-                                    draft.copyWith(autoLockTimeout: value)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Clipboard',
-                                  style:
-                                      Theme.of(context).textTheme.titleLarge),
-                              SwitchListTile(
-                                value: draft.clipboardClearEnabled,
-                                title: const Text('Auto-clear clipboard'),
-                                onChanged: (value) => setState(
-                                  () => _draft = draft.copyWith(
-                                      clipboardClearEnabled: value),
-                                ),
-                              ),
-                              DropdownButtonFormField<int>(
-                                initialValue: draft.clipboardClearDuration,
-                                decoration: const InputDecoration(
-                                    labelText:
-                                        'Clipboard clear duration (sec)'),
-                                items: const [10, 15, 30, 60]
-                                    .map((v) => DropdownMenuItem(
-                                        value: v, child: Text('$v')))
-                                    .toList(),
-                                onChanged: draft.clipboardClearEnabled
-                                    ? (value) => setState(
-                                          () => _draft = draft.copyWith(
-                                              clipboardClearDuration: value),
-                                        )
-                                    : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Card(
-                        child: ListTile(
-                          title: const Text('Password Hint'),
-                          subtitle: Text(
-                            activeVault.passwordHint.isEmpty
-                                ? 'No hint set'
-                                : activeVault.passwordHint,
-                          ),
-                        ),
-                      ),
-                      Card(
-                        child: Column(
-                          children: [
-                            ListTile(
-                              title: const Text('Change master password'),
-                              trailing: FilledButton(
-                                onPressed: _showChangeMasterPasswordDialog,
-                                child: const Text('Change'),
-                              ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: ThemeMode.system,
+                              child: Text('System default'),
                             ),
-                            ListTile(
-                              title: const Text('Export active vault'),
-                              trailing: FilledButton(
-                                onPressed: () => _exportVault(activeVault),
-                                child: const Text('Export'),
-                              ),
+                            DropdownMenuItem(
+                              value: ThemeMode.light,
+                              child: Text('Light'),
                             ),
-                            ListTile(
-                              title: const Text('Import vault file'),
-                              trailing: FilledButton(
-                                onPressed: () => _importVault(activeVault),
-                                child: const Text('Import'),
-                              ),
-                            ),
-                            ListTile(
-                              title: const Text('Check for breaches'),
-                              subtitle: Text(
-                                draft.lastBreachCheck == null
-                                    ? 'Never checked'
-                                    : 'Last checked: ${draft.lastBreachCheck!.toLocal()}',
-                              ),
-                              trailing: FilledButton.icon(
-                                onPressed: _checkingBreaches
-                                    ? null
-                                    : _checkForBreaches,
-                                icon: _checkingBreaches
-                                    ? const SizedBox(
-                                        width: 14,
-                                        height: 14,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2),
-                                      )
-                                    : const Icon(Icons.shield_outlined),
-                                label: Text(_checkingBreaches
-                                    ? 'Checking...'
-                                    : 'Check'),
-                              ),
+                            DropdownMenuItem(
+                              value: ThemeMode.dark,
+                              child: Text('Dark'),
                             ),
                           ],
+                          onChanged: (value) => setState(
+                            () => _draft = draft.copyWith(themeMode: value),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const SectionHeader(
+                  icon: Icons.security_rounded,
+                  title: 'Security',
+                  subtitle: 'Biometrics and automatic lock.',
+                ),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          value: draft.biometricEnabled,
+                          title: const Text('Biometric unlock'),
+                          subtitle: const Text(
+                            'Confirm identity before entering the master password.',
+                          ),
+                          onChanged: (value) => setState(
+                            () => _draft =
+                                draft.copyWith(biometricEnabled: value),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: DropdownButtonFormField<int>(
+                            key: ValueKey(draft.autoLockTimeout),
+                            initialValue: draft.autoLockTimeout,
+                            decoration: const InputDecoration(
+                              labelText: 'Auto-lock after (minutes)',
+                            ),
+                            items: const [1, 3, 5, 10, 15]
+                                .map(
+                                  (v) => DropdownMenuItem(
+                                    value: v,
+                                    child: Text('$v min'),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) => setState(
+                              () => _draft =
+                                  draft.copyWith(autoLockTimeout: value),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const SectionHeader(
+                  icon: Icons.content_paste_go_outlined,
+                  title: 'Clipboard',
+                  subtitle: 'Clear copied passwords automatically.',
+                ),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          value: draft.clipboardClearEnabled,
+                          title: const Text('Auto-clear clipboard'),
+                          onChanged: (value) => setState(
+                            () => _draft =
+                                draft.copyWith(clipboardClearEnabled: value),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: DropdownButtonFormField<int>(
+                            key: ValueKey(draft.clipboardClearDuration),
+                            initialValue: draft.clipboardClearDuration,
+                            decoration: const InputDecoration(
+                              labelText: 'Clear after (seconds)',
+                            ),
+                            items: const [10, 15, 30, 60]
+                                .map(
+                                  (v) => DropdownMenuItem(
+                                    value: v,
+                                    child: Text('$v s'),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: draft.clipboardClearEnabled
+                                ? (value) => setState(
+                                      () => _draft = draft.copyWith(
+                                        clipboardClearDuration: value,
+                                      ),
+                                    )
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const SectionHeader(
+                  icon: Icons.key_outlined,
+                  title: 'Active vault',
+                  subtitle: 'Hint is shown on unlock after a failed attempt.',
+                ),
+                Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: scheme.primaryContainer,
+                      foregroundColor: scheme.onPrimaryContainer,
+                      child: const Icon(Icons.vpn_key_outlined, size: 20),
+                    ),
+                    title: const Text('Password hint'),
+                    subtitle: Text(
+                      activeVault.passwordHint.isEmpty
+                          ? 'No hint set'
+                          : activeVault.passwordHint,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const SectionHeader(
+                  icon: Icons.folder_special_outlined,
+                  title: 'Vault & safety',
+                  subtitle: 'Export, import, and breach checks for this vault.',
+                ),
+                Card(
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.password_rounded),
+                        title: const Text('Change master password'),
+                        subtitle: const Text('Or update hint only'),
+                        trailing: FilledButton.tonal(
+                          onPressed: _showChangeMasterPasswordDialog,
+                          child: const Text('Change'),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.upload_file_outlined),
+                        title: const Text('Export encrypted vault'),
+                        trailing: FilledButton.tonal(
+                          onPressed: () => _exportVault(activeVault),
+                          child: const Text('Export'),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.download_outlined),
+                        title: const Text('Import vault file'),
+                        trailing: FilledButton.tonal(
+                          onPressed: () => _importVault(activeVault),
+                          child: const Text('Import'),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.shield_outlined),
+                        title: const Text('Check passwords against breaches'),
+                        subtitle: Text(
+                          draft.lastBreachCheck == null
+                              ? 'Never checked'
+                              : 'Last: ${draft.lastBreachCheck!.toLocal()}',
+                        ),
+                        trailing: FilledButton.icon(
+                          onPressed:
+                              _checkingBreaches ? null : _checkForBreaches,
+                          icon: _checkingBreaches
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.play_arrow_rounded),
+                          label: Text(
+                            _checkingBreaches ? 'Checking…' : 'Run check',
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              Positioned(
-                right: 12,
-                bottom: 12,
-                child: SafeArea(
-                  top: false,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      OutlinedButton(
-                        onPressed: () => _discard(settings),
-                        child: const Text('Discard changes'),
-                      ),
-                      const SizedBox(width: 10),
-                      FilledButton(
-                        onPressed: _saving ? null : _apply,
-                        child: const Text('Apply'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+              ],
+            ),
           );
         },
+      ),
+      bottomNavigationBar: settingsState.maybeWhen(
+        data: (settings) {
+          return Material(
+            elevation: 4,
+            surfaceTintColor: scheme.surfaceTint,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => _discard(settings),
+                      child: const Text('Discard'),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton(
+                      onPressed: _saving ? null : _apply,
+                      child: _saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Apply'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+        orElse: () => null,
       ),
     );
   }
@@ -358,32 +434,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
 
     if (overwrite == null) return;
+
+    late final VaultMetadata peeked;
+    try {
+      peeked =
+          await ref.read(peekVaultMetadataUseCaseProvider).call(sourcePath);
+    } catch (_) {
+      if (!mounted) return;
+      TopRightNotification.show(
+        context,
+        message: 'Could not read vault file.',
+        type: TopRightNotificationType.error,
+      );
+      return;
+    }
+
+    final settingsList =
+        ref.read(settingsControllerProvider).valueOrNull?.vaults ?? [];
+    final targetFileName = VaultNameUtils.fileNameForDisplayName(peeked.name);
+
+    if (!overwrite) {
+      if (VaultNameUtils.isNameTaken(settingsList, peeked.name)) {
+        if (!mounted) return;
+        TopRightNotification.show(
+          context,
+          message: 'This vault already exists.',
+          type: TopRightNotificationType.error,
+        );
+        return;
+      }
+    }
+
     final vaultId = overwrite
         ? activeVault.id
         : DateTime.now().millisecondsSinceEpoch.toString();
-    final temporaryFileName = overwrite ? activeVault.fileName : '$vaultId.dat';
+    final destFileName = overwrite ? activeVault.fileName : targetFileName;
+
     try {
       final metadata = await ref.read(importVaultUseCaseProvider).call(
             vaultId: vaultId,
-            vaultFileName: temporaryFileName,
+            vaultFileName: destFileName,
             sourcePath: sourcePath,
           );
-      final preferredFileName =
-          overwrite ? activeVault.fileName : '${metadata.name}.dat';
-      final hasConflict = !overwrite &&
-          (ref.read(settingsControllerProvider).valueOrNull?.vaults.any(
-                    (item) => item.fileName == preferredFileName,
-                  ) ??
-              false);
-      final fileName = hasConflict ? temporaryFileName : preferredFileName;
-      if (!overwrite && fileName != temporaryFileName) {
-        await ref.read(renameVaultUseCaseProvider).call(
-              vaultId: vaultId,
-              oldFileName: temporaryFileName,
-              newFileName: fileName,
-              metadata: metadata,
-            );
-      }
       if (!overwrite) {
         await ref.read(settingsControllerProvider.notifier).upsertVault(
               AppVault(
@@ -391,7 +483,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 name: metadata.name,
                 passwordHint: metadata.hint,
                 createdAt: metadata.createdAt,
-                fileName: fileName,
+                fileName: destFileName,
               ),
             );
       } else {
@@ -428,8 +520,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       text: ref
               .read(settingsControllerProvider)
               .valueOrNull
-              ?.activeVault
-              .passwordHint ??
+              ?.activeVaultOrNull
+              ?.passwordHint ??
           '',
     );
     bool hintOnly = false;
@@ -512,8 +604,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           }
                           final settings =
                               ref.read(settingsControllerProvider).valueOrNull;
-                          if (settings != null) {
-                            final updatedVault = settings.activeVault.copyWith(
+                          final av = settings?.activeVaultOrNull;
+                          if (settings != null && av != null) {
+                            final updatedVault = av.copyWith(
                                 passwordHint: hintController.text.trim());
                             await ref
                                 .read(updateVaultMetadataUseCaseProvider)

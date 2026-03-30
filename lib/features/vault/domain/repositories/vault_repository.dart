@@ -45,6 +45,9 @@ abstract class VaultRepository {
     required String sourcePath,
   });
 
+  /// Reads vault metadata from an external file without copying it into app storage.
+  Future<VaultMetadata> peekMetadataFromImportPath(String sourcePath);
+
   Future<void> renameVault({
     required String vaultId,
     required String oldFileName,
