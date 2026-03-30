@@ -1,0 +1,348 @@
+================================================================================
+  XPASS — PROJECT DOCUMENTATION
+  Offline password manager (Flutter, Clean Architecture, Riverpod)
+  Generated for portfolio / maintenance reference.
+================================================================================
+
+--------------------------------------------------------------------------------
+1. PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+
+What the app does
+  XPass (xpass) is a desktop-oriented Flutter application that stores password
+  entries inside one or more encrypted vault files on the local machine. It does
+  not require a network connection for core vault operations (unlock, save,
+  list accounts). Optional online checks use k-anonymity for breach detection.
+
+Key features
+  • Multi-vault: multiple encrypted files, switchable from settings or startup.
+  • AES-based vault encryption with a user master password per unlock session.
+  • Accounts: title, username, password, optional note; search and grid UI.
+  • Import / export of vault files; vault rename and delete.
+  • Breach checking (Have I Been Pwned style k-anonymity) and risk scoring
+    (weak, reused, leaked heuristics).
+  • Settings: theme, biometric gate, auto-lock, clipboard auto-clear.
+  • Material 3 UI with light/dark themes.
+
+Architecture used
+  Clean Architecture with three main layers per feature:
+    presentation (UI + Riverpod) → domain (entities, use cases, repository
+    interfaces) → data (repository implementations, local IO).
+  Shared code lives under lib/core (security, logging, theme, utilities).
+
+
+--------------------------------------------------------------------------------
+2. ARCHITECTURE EXPLANATION
+--------------------------------------------------------------------------------
+
+Layers
+  presentation
+    Widgets, screens, and Riverpod providers/notifiers. Maps user actions to
+    use case calls and renders state. Must not embed business rules that belong
+    in domain (validation exceptions for forms are acceptable at the edge).
+
+  domain
+    Entities (pure data + behavior-free models), repository abstract classes,
+    and use cases (single-responsibility operations). No Flutter imports.
+
+  data
+    Implements repositories: file paths via path_provider, JSON serialization,
+    and calls to core/security encryption services.
+
+  core
+    Cross-cutting: AES encryption service, breach API helper, logging, app
+    theme, result/error types, clipboard helpers, password generator, etc.
+
+How they interact
+  UI → Provider/Notifier → Use case (constructed with repository impl) →
+  Repository → Encryption + filesystem.
+  Settings and vault metadata are persisted separately from ciphertext payloads
+  where the architecture splits concerns (see local_settings_repository).
+
+
+--------------------------------------------------------------------------------
+3. FOLDER STRUCTURE BREAKDOWN
+--------------------------------------------------------------------------------
+
+lib/
+  main.dart
+    App entry: ProviderScope, global error zones, MaterialApp themes, startup
+    gate (splash, vault discovery, setup vs vault picker).
+
+  core/
+    config/          Application constants (e.g. API endpoints for breaches).
+    error/           Exceptions, failures, ErrorHandler for user-facing strings.
+    logging/         Structured app logging.
+    security/        Encryption interface + AES impl, breach checker, cache.
+    theme/           app_theme.dart — Material 3 theme tokens (light/dark).
+    utils/           Result type, password generator/strength, clipboard.
+    widgets/         Reusable UI (notifications, section headers).
+
+  features/
+    vault/           Primary feature: accounts, vault file, risk, import/export.
+    settings/        App settings and vault registry (AppVault list).
+    security/        Biometric authentication abstraction.
+    vault_switching/ Navigation helpers and vault list UI flows.
+    theme/           Theme update use case (if present).
+
+lib/features/vault/ (typical layout)
+  data/
+    repositories/local_vault_repository.dart   Vault file read/write.
+    models/account_model.dart                JSON DTO for accounts.
+  domain/
+    entities/       Account, categories, vault metadata.
+    repositories/   VaultRepository interface.
+    usecases/        Unlock, save, breach scan, CRUD accounts, etc.
+  presentation/
+    providers/vault_providers.dart   Riverpod: controller, search, filtered list.
+    screens/         Home, lock, setup, add/edit, account details.
+    widgets/         Account cards, list tiles.
+
+Note: There is no separate "accounts" feature folder — accounts are part of the
+vault feature (accounts are rows inside the decrypted vault document).
+
+
+--------------------------------------------------------------------------------
+4. FILE-BY-FILE EXPLANATION (IMPORTANT FILES)
+--------------------------------------------------------------------------------
+
+ENTRY & UI SHELL
+  lib/main.dart
+    Boots the app, wires FlutterError handler, runs under runZonedGuarded,
+    applies AppTheme light/dark, hosts AppStartGate (splash + vault existence
+    check + SetupScreen vs StartupVaultSelectionScreen).
+
+  lib/core/theme/app_theme.dart
+    Central ThemeData: color scheme from seed, card/input/button shapes,
+    page transitions (ZoomPageTransitionsBuilder), snack bar floating style.
+
+  lib/core/widgets/section_header.dart
+    Section titles with optional icon/subtitle for settings and forms.
+
+  lib/core/widgets/top_right_notification.dart
+    Overlay-based transient notifications (success/warning/error).
+
+  lib/features/vault/presentation/widgets/account_password_card.dart
+    Grid card for home screen: title, risk bar, username, note, risk chips.
+
+VAULT & ACCOUNTS
+  lib/features/vault/domain/entities/account.dart
+    Domain model for a stored credential (title, username, password, note,
+    derived risk flags/score — populated by use cases).
+
+  lib/features/vault/domain/entities/vault_metadata.dart
+    Vault header metadata (name, hint, createdAt) stored with encrypted payload.
+
+  lib/features/vault/domain/repositories/vault_repository.dart
+    Contract: exists, initialize, unlock, save, change password, export/import,
+    delete, rename file, update metadata.
+
+  lib/features/vault/data/repositories/local_vault_repository.dart
+    File-backed implementation: resolves paths, encrypts/decrypts JSON
+    document, maps AccountModel list, handles filesystem errors.
+
+  lib/features/vault/data/models/account_model.dart
+    Serialization for Account to/from JSON.
+
+  lib/features/vault/presentation/providers/vault_providers.dart
+    Riverpod providers for repository, use cases, VaultController (unlock state,
+    accounts, auto-lock timer, breach scan orchestration), search query.
+
+  lib/features/vault/presentation/screens/home_screen.dart
+    Password grid, search, navigation to settings/vaults/lock, add account FAB.
+
+  lib/features/vault/presentation/screens/lock_screen.dart
+    Master password entry; optional biometric prompt; shows password hint after
+    a failed unlock attempt; switch vault.
+
+  lib/features/vault/presentation/screens/setup_screen.dart
+    First-run onboarding: create vault or import existing file.
+
+  lib/features/vault/presentation/screens/add_account_screen.dart
+    Add/edit account form with password generator card.
+
+  lib/features/vault/presentation/screens/account_details_screen.dart
+    Read-only detail view with copy, edit navigation, delete.
+
+SETTINGS
+  lib/features/settings/domain/entities/app_settings.dart
+    Theme, timeouts, vault list, active vault id, breach check timestamp.
+
+  lib/features/settings/domain/entities/app_vault.dart
+    Registered vault: id, display name, file name, hint, createdAt.
+
+  lib/features/settings/data/datasources/local_settings_datasource.dart
+    Low-level read/write of settings JSON.
+
+  lib/features/settings/data/repositories/local_settings_repository.dart
+    Maps settings model ↔ domain, persists to disk.
+
+  lib/features/settings/presentation/providers/settings_providers.dart
+    SettingsController — load/save, vault CRUD helpers, switch active vault.
+
+  lib/features/settings/presentation/screens/settings_screen.dart
+    Grouped sections (appearance, security, clipboard, vault tools) with
+    bottom Apply/Discard bar.
+
+VAULT SWITCHING
+  lib/features/vault_switching/presentation/screens/startup_vault_selection_screen.dart
+    Shown when the app finds existing vault files: pick vault, import new file.
+
+  lib/features/vault_switching/presentation/screens/vault_selection_screen.dart
+    In-app vault manager: active highlight, rename, delete, create vault.
+
+SECURITY & BREACH
+  lib/core/security/encryption_service.dart
+    Abstract API for encrypt/decrypt strings (master password key derivation
+    implemented in concrete class).
+
+  lib/core/security/aes_encryption_service.dart
+    AES implementation used by LocalVaultRepository (via cryptography package).
+
+  lib/core/security/breach_checker.dart
+    k-anonymity request: SHA-1 prefix to breach API, parses range response.
+
+  lib/core/security/breach_cache.dart
+    Caches breach prefix results to limit network use.
+
+  lib/features/security/data/services/local_biometric_security_repository.dart
+    local_auth wrapper for biometric prompts.
+
+  lib/features/security/presentation/providers/security_providers.dart
+    Exposes AuthenticateBiometric use case.
+
+USE CASE EXAMPLES (domain)
+  lib/features/vault/domain/usecases/unlock_vault.dart — loads and decrypts.
+  lib/features/vault/domain/usecases/save_vault.dart — re-encrypts accounts.
+  lib/features/vault/domain/usecases/check_password_breach.dart — single check.
+  lib/features/vault/domain/usecases/check_all_passwords_breach.dart — batch.
+  lib/features/vault/domain/usecases/calculate_password_risk.dart — scoring.
+  lib/features/vault/domain/usecases/import_vault.dart / export_vault.dart —
+    copy/transform encrypted files.
+  lib/features/vault/domain/usecases/rename_vault.dart — on-disk file rename.
+
+CORE UTILITIES
+  lib/core/error/error_handler.dart — maps exceptions to user-visible strings.
+  lib/core/error/exceptions.dart — VaultException hierarchy.
+  lib/core/logging/app_logger.dart — error/info logging.
+  lib/core/utils/password_generator.dart — character class rules.
+  lib/core/utils/password_strength_validator.dart — master password policy.
+  lib/core/utils/clipboard_manager.dart — copy with optional timed clear.
+
+TESTS (test/)
+  local_vault_repository_test.dart — round-trip encrypt/decrypt vault.
+  aes_encryption_service_test.dart — wrong password behavior.
+  breach/risk unit tests — deterministic logic.
+
+
+--------------------------------------------------------------------------------
+5. DATA FLOW EXPLANATION
+--------------------------------------------------------------------------------
+
+Typical unlock flow
+  1. User selects vault (settings or startup list) → activeVaultId saved.
+  2. LockScreen collects master password → VaultController.unlock(password).
+  3. UnlockVault use case → VaultRepository.unlockVault → read file, decrypt,
+     deserialize accounts list.
+  4. VaultController holds unlocked accounts in memory; UI reads
+     vaultControllerProvider.
+
+Save after edit
+  Add/update account in notifier → SaveVault use case → encrypt full account
+  list + metadata → write file.
+
+Settings flow
+  SettingsController loads JSON → draft edited in UI → Apply saves via
+  repository; themeMode propagates to MaterialApp.
+
+Riverpod role
+  Providers construct use cases and repositories (composition root at feature
+  level). VaultController is a notifier for session state (unlocked, timer).
+
+
+--------------------------------------------------------------------------------
+6. SECURITY DESIGN
+--------------------------------------------------------------------------------
+
+Encryption approach
+  Vault file contains a JSON document with metadata and an encrypted payload
+  (string). The master password never stored; decryption attempted in-memory.
+  Wrong password yields WrongPasswordException (handled in UI).
+
+Vault protection
+  Files live under app documents directory (path_provider). OS-level access
+  control depends on the host machine. Auto-lock clears sensitive state by
+  locking the vault after idle timeout.
+
+Breach detection
+  Passwords are hashed (SHA-1) locally; only a short prefix is sent to the
+  breach API (k-anonymity). Full hash never leaves the device in the request
+  body as described by HIBP-style APIs.
+
+Risk scoring
+  Combines weak/reused/leaked heuristics into a 0–100 score (see
+  calculate_password_risk use case and Account fields).
+
+
+--------------------------------------------------------------------------------
+7. KEY FEATURES BREAKDOWN
+--------------------------------------------------------------------------------
+
+Multi-vault system
+  AppVault entries in settings point to distinct .dat files. Switching vault
+  clears session and navigates to LockScreen.
+
+Import / export
+  Export writes ciphertext to user-chosen path. Import copies and registers a
+  new vault or overwrites with confirmation (see settings + use cases).
+
+Breach detection
+  Optional batch scan updates account compromise flags and last check time.
+
+Risk scoring
+  Displayed on cards and detail screen; progress bar color reflects severity.
+
+Notes feature
+  Optional per-account note field stored encrypted inside the vault JSON.
+
+
+--------------------------------------------------------------------------------
+8. HOW TO RUN THE PROJECT
+--------------------------------------------------------------------------------
+
+Prerequisites
+  • Flutter SDK (see pubspec.yaml: environment sdk >=3.3.0 <4.0.0)
+  • Linux desktop enabled (for linux targets)
+
+Debug on Linux
+  flutter run -d linux
+
+Release build (Linux)
+  flutter build linux --release
+
+AppImage (short version)
+  After `flutter build linux --release`, bundle the `build/linux/x64/release/bundle`
+  folder with your preferred AppImage tooling (e.g. linuxdeploy + appimagetool),
+  setting the entry executable name to match your app binary, and including
+  required Flutter lib/*.so dependencies from the bundle. Exact steps depend on
+  your packaging script; validate on a clean machine.
+
+Tests
+  flutter test
+
+
+--------------------------------------------------------------------------------
+9. FUTURE IMPROVEMENTS
+--------------------------------------------------------------------------------
+
+  • Cloud sync (E2E encrypted blobs, conflict resolution).
+  • Mobile platforms (iOS/Android) with secure enclave / keystore integration.
+  • Automated encrypted backups to user-chosen folder or removable media.
+  • Accessibility audit (semantics, large text).
+  • Attachments / TOTP fields per account.
+  • Pluggable sync adapters and audit log for enterprise use.
+
+
+--------------------------------------------------------------------------------
+END OF DOCUMENTATION
+--------------------------------------------------------------------------------

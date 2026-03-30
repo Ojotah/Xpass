@@ -1,0 +1,15 @@
+import '../repositories/vault_repository.dart';
+
+class DeleteVault {
+  const DeleteVault(this._repository);
+
+  final VaultRepository _repository;
+
+  Future<void> call({
+    required String vaultId,
+    required String vaultFileName,
+  }) {
+    return _repository.deleteVault(
+        vaultId: vaultId, vaultFileName: vaultFileName);
+  }
+}

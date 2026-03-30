@@ -1,0 +1,38 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-plugins-*
+pubspec.lock
+
+# Generated / compiled
+*.log
+*.tmp
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Binary / sensitive (VERY IMPORTANT for your app)
+*.dat
+*.db
+*.sqlite
+*.json
+*.key
+*.enc
+
+# AppImage / release artifacts
+*.AppImage
+*.deb
+*.tar.gz
+
+# Environment / secrets
+.env

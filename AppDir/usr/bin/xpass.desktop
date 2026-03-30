@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=XPass Vault
+GenericName=Password Manager
+Comment=Offline encrypted password vault
+Exec=xpass
+Icon=xpass
+Terminal=false
+Categories=Utility;Security;
+StartupNotify=true
