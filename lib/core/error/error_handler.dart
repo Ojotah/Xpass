@@ -17,7 +17,7 @@ abstract final class ErrorHandler {
     return switch (error) {
       WrongPasswordException() => 'Incorrect password',
       FileCorruptedException() => 'Vault file corrupted',
-      VaultException() => 'Unable to load vault',
+      VaultException(:final message) => message,
       _ => 'Something went wrong. Please try again.',
     };
   }

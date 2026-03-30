@@ -45,10 +45,13 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     setState(() => _isBusy = true);
 
     final password = _masterPasswordController.text;
+    final vaultName = _vaultNameController.text.trim();
     final vault = AppVault(
       id: 'default',
-      name: _vaultNameController.text.trim(),
+      name: vaultName,
       passwordHint: _hintController.text.trim(),
+      createdAt: DateTime.now().toUtc(),
+      fileName: '$vaultName.dat',
     );
     final settings = AppSettings.defaults.copyWith(
       activeVaultId: vault.id,
@@ -56,8 +59,10 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
     );
 
     try {
+      await ref
+          .read(settingsControllerProvider.notifier)
+          .saveSettings(settings);
       await ref.read(vaultControllerProvider.notifier).initialize(password);
-      await ref.read(settingsControllerProvider.notifier).saveSettings(settings);
 
       if (!mounted) {
         return;
@@ -97,14 +102,18 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
               ),
               TextField(
                 controller: hintController,
-                decoration: const InputDecoration(labelText: 'Password Hint (optional)'),
+                decoration: const InputDecoration(
+                    labelText: 'Password Hint (optional)'),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel')),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop((passwordController.text, hintController.text.trim())),
+              onPressed: () => Navigator.of(context)
+                  .pop((passwordController.text, hintController.text.trim())),
               child: const Text('Import'),
             ),
           ],
@@ -115,20 +124,44 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
 
       if (imported == null) return;
 
-      await ref.read(importVaultUseCaseProvider).call(vaultId: 'default', sourcePath: sourcePath);
+      const temporaryFileName = 'default-import.dat';
+      final metadata = await ref.read(importVaultUseCaseProvider).call(
+            vaultId: 'default',
+            vaultFileName: temporaryFileName,
+            sourcePath: sourcePath,
+          );
+      final finalFileName = '${metadata.name}.dat';
+      if (finalFileName != temporaryFileName) {
+        await ref.read(renameVaultUseCaseProvider).call(
+              vaultId: 'default',
+              oldFileName: temporaryFileName,
+              newFileName: finalFileName,
+              metadata: metadata,
+            );
+      }
       await ref.read(vaultControllerProvider.notifier).unlock(imported.$1);
 
       final nextState = ref.read(vaultControllerProvider);
       if (nextState.hasError) {
-        throw nextState.error ?? const VaultException('Unable to unlock imported vault.');
+        throw nextState.error ??
+            const VaultException('Unable to unlock imported vault.');
       }
 
       final settings = AppSettings.defaults.copyWith(
         vaults: [
-          AppVault(id: 'default', name: 'Imported Vault', passwordHint: imported.$2 ?? ''),
+          AppVault(
+            id: 'default',
+            name: metadata.name,
+            passwordHint:
+                imported.$2?.isNotEmpty == true ? imported.$2! : metadata.hint,
+            createdAt: metadata.createdAt,
+            fileName: finalFileName,
+          ),
         ],
       );
-      await ref.read(settingsControllerProvider.notifier).saveSettings(settings);
+      await ref
+          .read(settingsControllerProvider.notifier)
+          .saveSettings(settings);
 
       if (!mounted) return;
       Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);

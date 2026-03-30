@@ -20,7 +20,6 @@ class LockScreen extends ConsumerStatefulWidget {
 class _LockScreenState extends ConsumerState<LockScreen> {
   final _passwordController = TextEditingController();
   bool _biometricTried = false;
-  int _failedAttempts = 0;
 
   @override
   void dispose() {
@@ -43,40 +42,44 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       return;
     }
 
-    final authenticated = await ref.read(authenticateBiometricUseCaseProvider).call();
+    final authenticated =
+        await ref.read(authenticateBiometricUseCaseProvider).call();
     if (!authenticated || !mounted) {
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Biometric verification complete. Enter password to unlock.')),
+      const SnackBar(
+          content: Text(
+              'Biometric verification complete. Enter password to unlock.')),
     );
   }
 
   Future<void> _unlock() async {
     FocusScope.of(context).unfocus();
 
-    await ref.read(vaultControllerProvider.notifier).unlock(_passwordController.text);
+    await ref
+        .read(vaultControllerProvider.notifier)
+        .unlock(_passwordController.text);
 
     if (!mounted) return;
 
     final nextState = ref.read(vaultControllerProvider);
     if (nextState.hasError) {
       final error = nextState.error;
-      final message = error == null ? 'Unable to unlock vault.' : ErrorHandler.toUserMessage(error);
+      final message = error == null
+          ? 'Unable to unlock vault.'
+          : ErrorHandler.toUserMessage(error);
 
-      setState(() => _failedAttempts += 1);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
       return;
     }
 
     final unlocked = nextState.valueOrNull?.isUnlocked ?? false;
     if (unlocked) {
-      setState(() => _failedAttempts = 0);
       _passwordController.clear();
       Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
-    } else {
-      setState(() => _failedAttempts += 1);
     }
   }
 
@@ -101,7 +104,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
   Widget build(BuildContext context) {
     final vaultState = ref.watch(vaultControllerProvider);
     final isBusy = vaultState.isLoading;
-    final passwordHint = ref.watch(settingsControllerProvider).valueOrNull?.activeVault.passwordHint ?? '';
+    final activeVault =
+        ref.watch(settingsControllerProvider).valueOrNull?.activeVault;
+    final vaultName = activeVault?.name ?? 'Vault';
+    final passwordHint = activeVault?.passwordHint ?? '';
 
     return Scaffold(
       body: Center(
@@ -114,10 +120,18 @@ class _LockScreenState extends ConsumerState<LockScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Unlock Vault',
+                  'Unlock $vaultName',
                   style: Theme.of(context).textTheme.headlineMedium,
                   textAlign: TextAlign.center,
                 ),
+                if (passwordHint.trim().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Hint: $passwordHint',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
                 const SizedBox(height: 24),
                 TextField(
                   controller: _passwordController,
@@ -128,13 +142,6 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                   ),
                   onSubmitted: (_) => _unlock(),
                 ),
-                if (_failedAttempts >= 3 && passwordHint.trim().isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    'Hint: $passwordHint',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: isBusy ? null : _unlock,

@@ -43,10 +43,12 @@ class XPassApp extends ConsumerStatefulWidget {
 class _XPassAppState extends ConsumerState<XPassApp> {
   @override
   Widget build(BuildContext context) {
-    final settings = ref.watch(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
+    final settings = ref.watch(settingsControllerProvider).valueOrNull ??
+        AppSettings.defaults;
 
     return Listener(
-      onPointerDown: (_) => ref.read(vaultControllerProvider.notifier).registerInteraction(),
+      onPointerDown: (_) =>
+          ref.read(vaultControllerProvider.notifier).registerInteraction(),
       child: MaterialApp(
         title: 'XPass Vault',
         debugShowCheckedModeBanner: false,
@@ -81,12 +83,32 @@ class AppStartGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
+    final settings = ref.watch(settingsControllerProvider).valueOrNull ??
+        AppSettings.defaults;
     final startupVaults = ref.watch(_startupVaultsProvider(settings.vaults));
 
     return startupVaults.when(
       loading: () => const _SplashScreen(),
-      error: (_, __) => const Scaffold(body: Center(child: Text('Could not start app.'))),
+      error: (_, __) => Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Could not start app.'),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: () =>
+                      ref.invalidate(_startupVaultsProvider(settings.vaults)),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
       data: (vaults) {
         if (vaults.isEmpty) {
           return const SetupScreen();
@@ -120,15 +142,18 @@ class _SplashScreen extends StatelessWidget {
   }
 }
 
-final _startupVaultsProvider = FutureProvider.family<List<AppVault>, List<AppVault>>((ref, vaults) async {
-  const minimumSplashDuration = Duration(seconds: 5);
+final _startupVaultsProvider =
+    FutureProvider.family<List<AppVault>, List<AppVault>>((ref, vaults) async {
+  /// Keeps the splash from flashing when vault checks finish instantly.
+  const minimumSplashDuration = Duration(milliseconds: 400);
   final startedAt = DateTime.now();
 
   final useCase = ref.read(checkVaultExistsUseCaseProvider);
   final existing = <AppVault>[];
 
   for (final vault in vaults) {
-    final exists = await useCase.call(vault.id);
+    final exists = await useCase.call(vault.fileName) ||
+        await useCase.call('${vault.id}.dat');
     if (exists) {
       existing.add(vault);
     }

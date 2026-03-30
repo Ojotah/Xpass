@@ -10,9 +10,11 @@ final localAuthenticationProvider = Provider<LocalAuthentication>((ref) {
 });
 
 final securityRepositoryProvider = Provider<SecurityRepository>((ref) {
-  return LocalBiometricSecurityRepository(ref.watch(localAuthenticationProvider));
+  return LocalBiometricSecurityRepository(
+      ref.watch(localAuthenticationProvider));
 });
 
-final authenticateBiometricUseCaseProvider = Provider<AuthenticateBiometric>((ref) {
+final authenticateBiometricUseCaseProvider =
+    Provider<AuthenticateBiometric>((ref) {
   return AuthenticateBiometric(ref.watch(securityRepositoryProvider));
 });

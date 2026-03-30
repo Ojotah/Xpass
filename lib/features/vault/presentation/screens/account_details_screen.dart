@@ -18,7 +18,8 @@ class AccountDetailsScreen extends ConsumerStatefulWidget {
   final Account account;
 
   @override
-  ConsumerState<AccountDetailsScreen> createState() => _AccountDetailsScreenState();
+  ConsumerState<AccountDetailsScreen> createState() =>
+      _AccountDetailsScreenState();
 }
 
 class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
@@ -27,10 +28,12 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
   Future<void> _copyPassword() async {
     await ref.read(copyToClipboardUseCaseProvider).call(
           widget.account.password,
-          autoClear: (ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults)
+          autoClear: (ref.read(settingsControllerProvider).valueOrNull ??
+                  AppSettings.defaults)
               .clipboardClearEnabled,
           clearAfter: Duration(
-            seconds: (ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults)
+            seconds: (ref.read(settingsControllerProvider).valueOrNull ??
+                    AppSettings.defaults)
                 .clipboardClearDuration,
           ),
         );
@@ -47,8 +50,12 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
             title: const Text('Delete account?'),
             content: const Text('This action cannot be undone.'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+              TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Delete')),
             ],
           ),
         ) ??
@@ -56,7 +63,9 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
 
     if (!approved) return;
 
-    await ref.read(vaultControllerProvider.notifier).deleteAccountAt(widget.index);
+    await ref
+        .read(vaultControllerProvider.notifier)
+        .deleteAccountAt(widget.index);
     if (!mounted) return;
     Navigator.pop(context);
   }
@@ -73,17 +82,18 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.account.title, style: Theme.of(context).textTheme.headlineSmall),
+                Text(widget.account.title,
+                    style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 12),
                 Text('Username: ${widget.account.username}'),
                 const SizedBox(height: 8),
                 Text('Risk score: ${widget.account.riskScore}/100'),
                 const SizedBox(height: 12),
-
                 if (widget.account.isCompromised) ...[
                   Row(
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: Theme.of(context).colorScheme.error),
+                      Icon(Icons.warning_amber_rounded,
+                          color: Theme.of(context).colorScheme.error),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -91,7 +101,8 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
                           style: Theme.of(context)
                               .textTheme
                               .bodyMedium
-                              ?.copyWith(color: Theme.of(context).colorScheme.error),
+                              ?.copyWith(
+                                  color: Theme.of(context).colorScheme.error),
                         ),
                       ),
                     ],
@@ -110,8 +121,11 @@ class _AccountDetailsScreenState extends ConsumerState<AccountDetailsScreen> {
                   spacing: 8,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => setState(() => _showPassword = !_showPassword),
-                      icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () =>
+                          setState(() => _showPassword = !_showPassword),
+                      icon: Icon(_showPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility),
                       label: Text(_showPassword ? 'Hide' : 'Show'),
                     ),
                     OutlinedButton.icon(

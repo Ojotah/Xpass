@@ -7,7 +7,15 @@ class ExportVault {
 
   final VaultRepository _repository;
 
-  Future<File> call({required String vaultId, required String targetPath}) {
-    return _repository.exportVault(vaultId: vaultId, targetPath: targetPath);
+  Future<File> call({
+    required String vaultId,
+    required String vaultFileName,
+    required String targetPath,
+  }) {
+    return _repository.exportVault(
+      vaultId: vaultId,
+      vaultFileName: vaultFileName,
+      targetPath: targetPath,
+    );
   }
 }

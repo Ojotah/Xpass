@@ -1,21 +1,21 @@
 import '../entities/vault_metadata.dart';
 import '../repositories/vault_repository.dart';
 
-class InitializeVault {
-  const InitializeVault(this._repository);
+class RenameVault {
+  const RenameVault(this._repository);
 
   final VaultRepository _repository;
 
   Future<void> call({
     required String vaultId,
-    required String vaultFileName,
-    required String masterPassword,
+    required String oldFileName,
+    required String newFileName,
     required VaultMetadata metadata,
   }) {
-    return _repository.initializeVault(
+    return _repository.renameVault(
       vaultId: vaultId,
-      vaultFileName: vaultFileName,
-      masterPassword: masterPassword,
+      oldFileName: oldFileName,
+      newFileName: newFileName,
       metadata: metadata,
     );
   }

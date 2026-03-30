@@ -1,20 +1,20 @@
 import '../entities/vault_metadata.dart';
 import '../repositories/vault_repository.dart';
 
-class ImportVault {
-  const ImportVault(this._repository);
+class UpdateVaultMetadata {
+  const UpdateVaultMetadata(this._repository);
 
   final VaultRepository _repository;
 
-  Future<VaultMetadata> call({
+  Future<void> call({
     required String vaultId,
     required String vaultFileName,
-    required String sourcePath,
+    required VaultMetadata metadata,
   }) {
-    return _repository.importVault(
+    return _repository.updateVaultMetadata(
       vaultId: vaultId,
       vaultFileName: vaultFileName,
-      sourcePath: sourcePath,
+      metadata: metadata,
     );
   }
 }

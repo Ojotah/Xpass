@@ -10,7 +10,8 @@ import '../../domain/repositories/settings_repository.dart';
 import '../../domain/usecases/get_settings.dart';
 import '../../domain/usecases/update_settings.dart';
 
-final localSettingsDataSourceProvider = Provider<LocalSettingsDataSource>((ref) {
+final localSettingsDataSourceProvider =
+    Provider<LocalSettingsDataSource>((ref) {
   return LocalSettingsDataSource();
 });
 
@@ -46,7 +47,9 @@ class SettingsController extends AsyncNotifier<AppSettings> {
 
   Future<void> setTheme(ThemeMode themeMode) async {
     final current = state.valueOrNull ?? AppSettings.defaults;
-    await ref.read(updateThemeUseCaseProvider).call(current: current, themeMode: themeMode);
+    await ref
+        .read(updateThemeUseCaseProvider)
+        .call(current: current, themeMode: themeMode);
     state = AsyncData(current.copyWith(themeMode: themeMode));
   }
 
@@ -72,7 +75,6 @@ class SettingsController extends AsyncNotifier<AppSettings> {
     state = AsyncData(next);
   }
 
-
   Future<void> updateLastBreachCheck(DateTime timestamp) async {
     final current = state.valueOrNull ?? AppSettings.defaults;
     final next = current.copyWith(lastBreachCheck: timestamp.toUtc());
@@ -86,8 +88,11 @@ class SettingsController extends AsyncNotifier<AppSettings> {
       return;
     }
 
-    final vaults = current.vaults.where((vault) => vault.id != vaultId).toList();
-    final nextActive = current.activeVaultId == vaultId ? vaults.first.id : current.activeVaultId;
+    final vaults =
+        current.vaults.where((vault) => vault.id != vaultId).toList();
+    final nextActive = current.activeVaultId == vaultId
+        ? vaults.first.id
+        : current.activeVaultId;
     final next = current.copyWith(vaults: vaults, activeVaultId: nextActive);
     await ref.read(updateSettingsUseCaseProvider).call(next);
     state = AsyncData(next);
@@ -95,4 +100,5 @@ class SettingsController extends AsyncNotifier<AppSettings> {
 }
 
 final settingsControllerProvider =
-    AsyncNotifierProvider<SettingsController, AppSettings>(SettingsController.new);
+    AsyncNotifierProvider<SettingsController, AppSettings>(
+        SettingsController.new);

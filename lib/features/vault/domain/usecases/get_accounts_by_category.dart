@@ -12,6 +12,8 @@ class GetAccountsByCategory {
       return accounts;
     }
 
-    return accounts.where((account) => _detectAccountCategory.call(account) == category).toList(growable: false);
+    return accounts
+        .where((account) => _detectAccountCategory.call(account) == category)
+        .toList(growable: false);
   }
 }

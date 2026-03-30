@@ -59,10 +59,12 @@ class _TopRightNotificationBubble extends StatefulWidget {
   final VoidCallback onDismissed;
 
   @override
-  State<_TopRightNotificationBubble> createState() => _TopRightNotificationBubbleState();
+  State<_TopRightNotificationBubble> createState() =>
+      _TopRightNotificationBubbleState();
 }
 
-class _TopRightNotificationBubbleState extends State<_TopRightNotificationBubble>
+class _TopRightNotificationBubbleState
+    extends State<_TopRightNotificationBubble>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<Offset> _slide;
@@ -139,7 +141,8 @@ class _TopRightNotificationBubbleState extends State<_TopRightNotificationBubble
               onTap: _dismiss,
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 340),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -148,7 +151,8 @@ class _TopRightNotificationBubbleState extends State<_TopRightNotificationBubble
                     Flexible(
                       child: Text(
                         widget.message,
-                        style: TextStyle(color: foreground, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            color: foreground, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],

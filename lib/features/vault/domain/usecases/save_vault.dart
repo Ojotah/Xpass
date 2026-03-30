@@ -8,11 +8,13 @@ class SaveVault {
 
   Future<void> call({
     required String vaultId,
+    required String vaultFileName,
     required List<Account> accounts,
     required String masterPassword,
   }) {
     return _repository.saveVault(
       vaultId: vaultId,
+      vaultFileName: vaultFileName,
       accounts: accounts,
       masterPassword: masterPassword,
     );

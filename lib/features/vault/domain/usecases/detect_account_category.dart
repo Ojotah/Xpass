@@ -13,15 +13,23 @@ class DetectAccountCategory {
 
     final domain = username.substring(atIndex + 1);
 
-    if (domain.contains('outlook.') || domain.contains('hotmail.') || domain.contains('live.') || domain.contains('microsoft.')) {
+    if (domain.contains('outlook.') ||
+        domain.contains('hotmail.') ||
+        domain.contains('live.') ||
+        domain.contains('microsoft.')) {
       return AccountCategory.microsoft;
     }
 
-    if (domain.contains('gmail.') || domain.contains('googlemail.') || domain.contains('google.')) {
+    if (domain.contains('gmail.') ||
+        domain.contains('googlemail.') ||
+        domain.contains('google.')) {
       return AccountCategory.google;
     }
 
-    if (domain.contains('icloud.') || domain.contains('me.com') || domain.contains('mac.com') || domain.contains('apple.')) {
+    if (domain.contains('icloud.') ||
+        domain.contains('me.com') ||
+        domain.contains('mac.com') ||
+        domain.contains('apple.')) {
       return AccountCategory.apple;
     }
 

@@ -5,5 +5,6 @@ class CheckVaultExists {
 
   final VaultRepository _repository;
 
-  Future<bool> call(String vaultId) => _repository.vaultExists(vaultId);
+  Future<bool> call(String vaultFileName) =>
+      _repository.vaultExists(vaultFileName);
 }

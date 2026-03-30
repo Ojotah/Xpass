@@ -28,7 +28,7 @@ class AppSettings {
         orElse: () => vaults.first,
       );
 
-  static const defaults = AppSettings(
+  static final defaults = AppSettings(
     autoLockTimeout: 5,
     clipboardClearEnabled: true,
     clipboardClearDuration: 15,
@@ -36,7 +36,13 @@ class AppSettings {
     themeMode: ThemeMode.system,
     activeVaultId: 'default',
     vaults: [
-      AppVault(id: 'default', name: 'My Vault', passwordHint: ''),
+      AppVault(
+        id: 'default',
+        name: 'My Vault',
+        passwordHint: '',
+        createdAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+        fileName: 'My Vault.dat',
+      ),
     ],
     lastBreachCheck: null,
   );
@@ -54,14 +60,17 @@ class AppSettings {
   }) {
     return AppSettings(
       autoLockTimeout: autoLockTimeout ?? this.autoLockTimeout,
-      clipboardClearEnabled: clipboardClearEnabled ?? this.clipboardClearEnabled,
-      clipboardClearDuration: clipboardClearDuration ?? this.clipboardClearDuration,
+      clipboardClearEnabled:
+          clipboardClearEnabled ?? this.clipboardClearEnabled,
+      clipboardClearDuration:
+          clipboardClearDuration ?? this.clipboardClearDuration,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       themeMode: themeMode ?? this.themeMode,
       activeVaultId: activeVaultId ?? this.activeVaultId,
       vaults: vaults ?? this.vaults,
-      lastBreachCheck:
-          clearLastBreachCheck ? null : (lastBreachCheck ?? this.lastBreachCheck),
+      lastBreachCheck: clearLastBreachCheck
+          ? null
+          : (lastBreachCheck ?? this.lastBreachCheck),
     );
   }
 }

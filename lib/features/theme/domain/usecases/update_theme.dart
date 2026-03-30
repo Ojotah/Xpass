@@ -12,6 +12,7 @@ class UpdateTheme {
     required AppSettings current,
     required ThemeMode themeMode,
   }) {
-    return _settingsRepository.updateSettings(current.copyWith(themeMode: themeMode));
+    return _settingsRepository
+        .updateSettings(current.copyWith(themeMode: themeMode));
   }
 }

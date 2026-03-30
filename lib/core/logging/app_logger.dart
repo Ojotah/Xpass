@@ -16,7 +16,8 @@ abstract final class AppLogger {
     StackTrace? stackTrace,
     String scope = 'app',
   }) {
-    developer.log(message, name: scope, level: 1000, error: error, stackTrace: stackTrace);
+    developer.log(message,
+        name: scope, level: 1000, error: error, stackTrace: stackTrace);
   }
 
   static void debug(String message, {String scope = 'app'}) {

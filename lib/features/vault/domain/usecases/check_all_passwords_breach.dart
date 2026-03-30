@@ -26,7 +26,8 @@ class CheckAllPasswordsBreach {
 
     final hashSet = accountHashes.values.toSet();
     final cachedResults = _breachCache.getMany(hashSet);
-    final unresolved = hashSet.where((hash) => !cachedResults.containsKey(hash)).toSet();
+    final unresolved =
+        hashSet.where((hash) => !cachedResults.containsKey(hash)).toSet();
 
     final resolvedFromApi = await kChecker.checkSha1Hashes(unresolved);
     _breachCache.putMany(resolvedFromApi);

@@ -6,7 +6,8 @@ import 'package:xpass/features/vault/domain/usecases/check_all_passwords_breach.
 
 void main() {
   test('marks compromised account from hash set lookup', () async {
-    final checker = KAnonymityBreachChecker(httpClient: null, requestDelay: Duration.zero);
+    final checker =
+        KAnonymityBreachChecker(httpClient: null, requestDelay: Duration.zero);
 
     final useCase = CheckAllPasswordsBreach(
       breachChecker: _FakeKAnonymityBreachChecker(checker),
@@ -27,7 +28,9 @@ void main() {
 
 class _FakeKAnonymityBreachChecker extends KAnonymityBreachChecker {
   _FakeKAnonymityBreachChecker(this._delegate)
-      : super(endpointBase: 'https://example.invalid/', requestDelay: Duration.zero);
+      : super(
+            endpointBase: 'https://example.invalid/',
+            requestDelay: Duration.zero);
 
   final KAnonymityBreachChecker _delegate;
 

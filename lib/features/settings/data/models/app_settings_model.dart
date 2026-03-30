@@ -34,16 +34,26 @@ class AppSettingsModel extends AppSettings {
         .toList();
 
     final fallbackVaults = vaults.isEmpty
-        ? const [AppVault(id: 'default', name: 'My Vault', passwordHint: '')]
+        ? [
+            AppVault(
+              id: 'default',
+              name: 'My Vault',
+              passwordHint: '',
+              createdAt: DateTime.utc(1970, 1, 1),
+              fileName: 'My Vault.dat',
+            ),
+          ]
         : vaults;
 
     return AppSettingsModel(
       autoLockTimeout: (json['autoLockTimeout'] as num?)?.toInt() ?? 5,
       clipboardClearEnabled: json['clipboardClearEnabled'] as bool? ?? true,
-      clipboardClearDuration: (json['clipboardClearDuration'] as num?)?.toInt() ?? 15,
+      clipboardClearDuration:
+          (json['clipboardClearDuration'] as num?)?.toInt() ?? 15,
       biometricEnabled: json['biometricEnabled'] as bool? ?? false,
       themeMode: _themeModeFromString(json['themeMode'] as String?),
-      activeVaultId: json['activeVaultId'] as String? ?? fallbackVaults.first.id,
+      activeVaultId:
+          json['activeVaultId'] as String? ?? fallbackVaults.first.id,
       vaults: fallbackVaults,
       lastBreachCheck: _dateTimeFromString(json['lastBreachCheck'] as String?),
     );
@@ -54,6 +64,9 @@ class AppSettingsModel extends AppSettings {
       id: json['id'] as String,
       name: json['name'] as String,
       passwordHint: json['passwordHint'] as String? ?? '',
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.utc(1970, 1, 1),
+      fileName: json['fileName'] as String? ?? '${json['name'] as String}.dat',
     );
   }
 
@@ -94,6 +107,8 @@ class AppSettingsModel extends AppSettings {
               'id': vault.id,
               'name': vault.name,
               'passwordHint': vault.passwordHint,
+              'createdAt': vault.createdAt.toUtc().toIso8601String(),
+              'fileName': vault.fileName,
             },
           )
           .toList(),

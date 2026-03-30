@@ -47,7 +47,9 @@ class KAnonymityBreachChecker implements BreachChecker {
     final groupedByPrefix = <String, List<String>>{};
     for (final hash in pending) {
       final prefix = hash.substring(0, 5);
-      groupedByPrefix.putIfAbsent(prefix, () => <String>[]).add(hash.substring(5));
+      groupedByPrefix
+          .putIfAbsent(prefix, () => <String>[])
+          .add(hash.substring(5));
     }
 
     final resolved = <String, bool>{};

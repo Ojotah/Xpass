@@ -38,6 +38,9 @@ import '../../domain/usecases/save_vault.dart';
 import '../../domain/usecases/search_accounts.dart';
 import '../../domain/usecases/unlock_vault.dart';
 import '../../domain/usecases/update_account.dart';
+import '../../domain/usecases/update_vault_metadata.dart';
+import '../../domain/usecases/rename_vault.dart';
+import '../../domain/entities/vault_metadata.dart';
 
 final encryptionServiceProvider = Provider<EncryptionService>((ref) {
   return AesEncryptionService();
@@ -63,7 +66,8 @@ final saveVaultUseCaseProvider = Provider<SaveVault>((ref) {
   return SaveVault(ref.watch(vaultRepositoryProvider));
 });
 
-final changeMasterPasswordUseCaseProvider = Provider<ChangeMasterPassword>((ref) {
+final changeMasterPasswordUseCaseProvider =
+    Provider<ChangeMasterPassword>((ref) {
   return ChangeMasterPassword(ref.watch(vaultRepositoryProvider));
 });
 
@@ -73,6 +77,14 @@ final exportVaultUseCaseProvider = Provider<ExportVault>((ref) {
 
 final importVaultUseCaseProvider = Provider<ImportVault>((ref) {
   return ImportVault(ref.watch(vaultRepositoryProvider));
+});
+
+final renameVaultUseCaseProvider = Provider<RenameVault>((ref) {
+  return RenameVault(ref.watch(vaultRepositoryProvider));
+});
+
+final updateVaultMetadataUseCaseProvider = Provider<UpdateVaultMetadata>((ref) {
+  return UpdateVaultMetadata(ref.watch(vaultRepositoryProvider));
 });
 
 final deleteVaultUseCaseProvider = Provider<DeleteVault>((ref) {
@@ -109,7 +121,8 @@ final checkPasswordBreachUseCaseProvider = Provider<CheckPasswordBreach>((ref) {
   return CheckPasswordBreach(ref.watch(breachCheckerProvider));
 });
 
-final checkAllPasswordsBreachUseCaseProvider = Provider<CheckAllPasswordsBreach>((ref) {
+final checkAllPasswordsBreachUseCaseProvider =
+    Provider<CheckAllPasswordsBreach>((ref) {
   return CheckAllPasswordsBreach(
     breachChecker: ref.watch(breachCheckerProvider),
     breachCache: ref.watch(breachCacheProvider),
@@ -120,11 +133,13 @@ final detectWeakPasswordsUseCaseProvider = Provider<DetectWeakPasswords>((ref) {
   return const DetectWeakPasswords();
 });
 
-final detectReusedPasswordsUseCaseProvider = Provider<DetectReusedPasswords>((ref) {
+final detectReusedPasswordsUseCaseProvider =
+    Provider<DetectReusedPasswords>((ref) {
   return const DetectReusedPasswords();
 });
 
-final calculatePasswordRiskUseCaseProvider = Provider<CalculatePasswordRisk>((ref) {
+final calculatePasswordRiskUseCaseProvider =
+    Provider<CalculatePasswordRisk>((ref) {
   return const CalculatePasswordRisk();
 });
 
@@ -142,11 +157,13 @@ final updateAccountUseCaseProvider = Provider<UpdateAccount>((ref) {
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-final detectAccountCategoryUseCaseProvider = Provider<DetectAccountCategory>((ref) {
+final detectAccountCategoryUseCaseProvider =
+    Provider<DetectAccountCategory>((ref) {
   return const DetectAccountCategory();
 });
 
-final getAccountsByCategoryUseCaseProvider = Provider<GetAccountsByCategory>((ref) {
+final getAccountsByCategoryUseCaseProvider =
+    Provider<GetAccountsByCategory>((ref) {
   return GetAccountsByCategory(ref.watch(detectAccountCategoryUseCaseProvider));
 });
 
@@ -154,11 +171,13 @@ final getCategoryCountsUseCaseProvider = Provider<GetCategoryCounts>((ref) {
   return GetCategoryCounts(ref.watch(detectAccountCategoryUseCaseProvider));
 });
 
-final selectedCategoryProvider = StateProvider<AccountCategory>((ref) => AccountCategory.all);
+final selectedCategoryProvider =
+    StateProvider<AccountCategory>((ref) => AccountCategory.all);
 
 final filteredAccountsProvider = Provider<List<Account>>((ref) {
   final accounts = ref.watch(
-    vaultControllerProvider.select((value) => value.valueOrNull?.accounts ?? const []),
+    vaultControllerProvider
+        .select((value) => value.valueOrNull?.accounts ?? const []),
   );
   final query = ref.watch(searchQueryProvider);
 
@@ -167,7 +186,8 @@ final filteredAccountsProvider = Provider<List<Account>>((ref) {
 
 final categoryCountsProvider = Provider<Map<AccountCategory, int>>((ref) {
   final accounts = ref.watch(
-    vaultControllerProvider.select((value) => value.valueOrNull?.accounts ?? const []),
+    vaultControllerProvider
+        .select((value) => value.valueOrNull?.accounts ?? const []),
   );
   return ref.watch(getCategoryCountsUseCaseProvider).call(accounts);
 });
@@ -205,8 +225,26 @@ class VaultController extends AsyncNotifier<VaultState> {
   bool _isBreachCheckRunning = false;
 
   String get _activeVaultId {
-    final settings = ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
+    final settings = ref.read(settingsControllerProvider).valueOrNull ??
+        AppSettings.defaults;
     return settings.activeVaultId;
+  }
+
+  String get _activeVaultFileName {
+    final settings = ref.read(settingsControllerProvider).valueOrNull ??
+        AppSettings.defaults;
+    return settings.activeVault.fileName;
+  }
+
+  VaultMetadata get _activeVaultMetadata {
+    final settings = ref.read(settingsControllerProvider).valueOrNull ??
+        AppSettings.defaults;
+    final vault = settings.activeVault;
+    return VaultMetadata(
+      name: vault.name,
+      hint: vault.passwordHint,
+      createdAt: vault.createdAt,
+    );
   }
 
   @override
@@ -219,9 +257,11 @@ class VaultController extends AsyncNotifier<VaultState> {
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(() async {
-      final accounts = await ref
-          .read(unlockVaultUseCaseProvider)
-          .call(vaultId: _activeVaultId, masterPassword: password);
+      final accounts = await ref.read(unlockVaultUseCaseProvider).call(
+            vaultId: _activeVaultId,
+            vaultFileName: _activeVaultFileName,
+            masterPassword: password,
+          );
 
       _sessionPassword = password;
       _startInactivityTimer();
@@ -239,9 +279,12 @@ class VaultController extends AsyncNotifier<VaultState> {
   }
 
   Future<void> initialize(String password) async {
-    await ref
-        .read(initializeVaultUseCaseProvider)
-        .call(vaultId: _activeVaultId, masterPassword: password);
+    await ref.read(initializeVaultUseCaseProvider).call(
+          vaultId: _activeVaultId,
+          vaultFileName: _activeVaultFileName,
+          masterPassword: password,
+          metadata: _activeVaultMetadata,
+        );
     AppLogger.event('Vault initialized.', scope: 'vault');
     _sessionPassword = password;
     state = const AsyncData(VaultState(isUnlocked: true, accounts: []));
@@ -254,7 +297,8 @@ class VaultController extends AsyncNotifier<VaultState> {
       return;
     }
 
-    final nextAccounts = await _applySecuritySignals([...current.accounts, account]);
+    final nextAccounts =
+        await _applySecuritySignals([...current.accounts, account]);
     await _saveAndUpdateState(current, nextAccounts);
   }
 
@@ -279,7 +323,8 @@ class VaultController extends AsyncNotifier<VaultState> {
       return;
     }
 
-    final nextAccounts = ref.read(deleteAccountUseCaseProvider).call(current.accounts, index);
+    final nextAccounts =
+        ref.read(deleteAccountUseCaseProvider).call(current.accounts, index);
     final rescored = _applyLocalRiskSignals(nextAccounts);
     await _saveAndUpdateState(current, rescored);
   }
@@ -290,6 +335,7 @@ class VaultController extends AsyncNotifier<VaultState> {
   }) async {
     await ref.read(changeMasterPasswordUseCaseProvider).call(
           vaultId: _activeVaultId,
+          vaultFileName: _activeVaultFileName,
           currentPassword: currentPassword,
           newPassword: newPassword,
         );
@@ -330,6 +376,7 @@ class VaultController extends AsyncNotifier<VaultState> {
     state = await AsyncValue.guard(() async {
       await ref.read(saveVaultUseCaseProvider).call(
             vaultId: _activeVaultId,
+            vaultFileName: _activeVaultFileName,
             accounts: nextAccounts,
             masterPassword: _sessionPassword!,
           );
@@ -340,7 +387,8 @@ class VaultController extends AsyncNotifier<VaultState> {
 
   void _startInactivityTimer() {
     _autoLockTimer?.cancel();
-    final settings = ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
+    final settings = ref.read(settingsControllerProvider).valueOrNull ??
+        AppSettings.defaults;
     final minutes = settings.autoLockTimeout;
     if (minutes <= 0) {
       return;
@@ -354,7 +402,8 @@ class VaultController extends AsyncNotifier<VaultState> {
       return 0;
     }
 
-    final settings = ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults;
+    final settings = ref.read(settingsControllerProvider).valueOrNull ??
+        AppSettings.defaults;
     final lastCheck = settings.lastBreachCheck;
     final now = DateTime.now().toUtc();
     if (!force && lastCheck != null && now.difference(lastCheck).inDays < 3) {
@@ -372,13 +421,18 @@ class VaultController extends AsyncNotifier<VaultState> {
 
       await ref.read(saveVaultUseCaseProvider).call(
             vaultId: _activeVaultId,
+            vaultFileName: _activeVaultFileName,
             accounts: securedAccounts,
             masterPassword: _sessionPassword!,
           );
 
-      final compromisedCount = securedAccounts.where((account) => account.isCompromised).length;
-      state = AsyncData(current.copyWith(accounts: securedAccounts, clearError: true));
-      await ref.read(settingsControllerProvider.notifier).updateLastBreachCheck(now);
+      final compromisedCount =
+          securedAccounts.where((account) => account.isCompromised).length;
+      state = AsyncData(
+          current.copyWith(accounts: securedAccounts, clearError: true));
+      await ref
+          .read(settingsControllerProvider.notifier)
+          .updateLastBreachCheck(now);
       return compromisedCount;
     } catch (error, stackTrace) {
       ErrorHandler.logRecoverable('Breach scan failed.', error, stackTrace);
@@ -389,12 +443,14 @@ class VaultController extends AsyncNotifier<VaultState> {
   }
 
   Future<List<Account>> _applySecuritySignals(List<Account> accounts) async {
-    final withBreachStatus = await ref.read(checkAllPasswordsBreachUseCaseProvider).call(accounts);
+    final withBreachStatus =
+        await ref.read(checkAllPasswordsBreachUseCaseProvider).call(accounts);
     return _applyLocalRiskSignals(withBreachStatus);
   }
 
   List<Account> _applyLocalRiskSignals(List<Account> accounts) {
-    final reusedIndexes = ref.read(detectReusedPasswordsUseCaseProvider).call(accounts);
+    final reusedIndexes =
+        ref.read(detectReusedPasswordsUseCaseProvider).call(accounts);
     final weakDetector = ref.read(detectWeakPasswordsUseCaseProvider);
     final riskCalculator = ref.read(calculatePasswordRiskUseCaseProvider);
 

@@ -9,6 +9,7 @@ class SwitchVault {
 
   Future<void> call(String vaultId) async {
     final settings = await _getSettings.call();
-    await _settingsRepository.updateSettings(settings.copyWith(activeVaultId: vaultId));
+    await _settingsRepository
+        .updateSettings(settings.copyWith(activeVaultId: vaultId));
   }
 }

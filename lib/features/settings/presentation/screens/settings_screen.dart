@@ -6,6 +6,7 @@ import '../../../../core/error/exceptions.dart';
 import '../../../../core/utils/password_strength_validator.dart';
 import '../../../../core/widgets/top_right_notification.dart';
 import '../../../vault/presentation/providers/vault_providers.dart';
+import '../../../vault/domain/entities/vault_metadata.dart';
 import '../../domain/entities/app_settings.dart';
 import '../../domain/entities/app_vault.dart';
 import '../providers/settings_providers.dart';
@@ -67,17 +68,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Appearance', style: Theme.of(context).textTheme.titleLarge),
+                              Text('Appearance',
+                                  style:
+                                      Theme.of(context).textTheme.titleLarge),
                               DropdownButtonFormField<ThemeMode>(
                                 initialValue: draft.themeMode,
-                                decoration: const InputDecoration(labelText: 'Theme'),
+                                decoration:
+                                    const InputDecoration(labelText: 'Theme'),
                                 items: const [
-                                  DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
-                                  DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
-                                  DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
+                                  DropdownMenuItem(
+                                      value: ThemeMode.system,
+                                      child: Text('System')),
+                                  DropdownMenuItem(
+                                      value: ThemeMode.light,
+                                      child: Text('Light')),
+                                  DropdownMenuItem(
+                                      value: ThemeMode.dark,
+                                      child: Text('Dark')),
                                 ],
-                                onChanged: (value) =>
-                                    setState(() => _draft = draft.copyWith(themeMode: value)),
+                                onChanged: (value) => setState(() =>
+                                    _draft = draft.copyWith(themeMode: value)),
                               ),
                             ],
                           ),
@@ -89,22 +99,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Security', style: Theme.of(context).textTheme.titleLarge),
+                              Text('Security',
+                                  style:
+                                      Theme.of(context).textTheme.titleLarge),
                               SwitchListTile(
                                 value: draft.biometricEnabled,
                                 title: const Text('Enable biometric unlock'),
-                                onChanged: (value) =>
-                                    setState(() => _draft = draft.copyWith(biometricEnabled: value)),
+                                onChanged: (value) => setState(() => _draft =
+                                    draft.copyWith(biometricEnabled: value)),
                               ),
                               DropdownButtonFormField<int>(
                                 initialValue: draft.autoLockTimeout,
-                                decoration:
-                                    const InputDecoration(labelText: 'Auto-lock timeout (minutes)'),
+                                decoration: const InputDecoration(
+                                    labelText: 'Auto-lock timeout (minutes)'),
                                 items: const [1, 3, 5, 10, 15]
-                                    .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
+                                    .map((v) => DropdownMenuItem(
+                                        value: v, child: Text('$v')))
                                     .toList(),
-                                onChanged: (value) =>
-                                    setState(() => _draft = draft.copyWith(autoLockTimeout: value)),
+                                onChanged: (value) => setState(() => _draft =
+                                    draft.copyWith(autoLockTimeout: value)),
                               ),
                             ],
                           ),
@@ -116,25 +129,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Clipboard', style: Theme.of(context).textTheme.titleLarge),
+                              Text('Clipboard',
+                                  style:
+                                      Theme.of(context).textTheme.titleLarge),
                               SwitchListTile(
                                 value: draft.clipboardClearEnabled,
                                 title: const Text('Auto-clear clipboard'),
                                 onChanged: (value) => setState(
-                                  () => _draft = draft.copyWith(clipboardClearEnabled: value),
+                                  () => _draft = draft.copyWith(
+                                      clipboardClearEnabled: value),
                                 ),
                               ),
                               DropdownButtonFormField<int>(
                                 initialValue: draft.clipboardClearDuration,
-                                decoration:
-                                    const InputDecoration(labelText: 'Clipboard clear duration (sec)'),
+                                decoration: const InputDecoration(
+                                    labelText:
+                                        'Clipboard clear duration (sec)'),
                                 items: const [10, 15, 30, 60]
-                                    .map((v) => DropdownMenuItem(value: v, child: Text('$v')))
+                                    .map((v) => DropdownMenuItem(
+                                        value: v, child: Text('$v')))
                                     .toList(),
                                 onChanged: draft.clipboardClearEnabled
                                     ? (value) => setState(
-                                          () => _draft =
-                                              draft.copyWith(clipboardClearDuration: value),
+                                          () => _draft = draft.copyWith(
+                                              clipboardClearDuration: value),
                                         )
                                     : null,
                               ),
@@ -184,15 +202,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                     : 'Last checked: ${draft.lastBreachCheck!.toLocal()}',
                               ),
                               trailing: FilledButton.icon(
-                                onPressed: _checkingBreaches ? null : _checkForBreaches,
+                                onPressed: _checkingBreaches
+                                    ? null
+                                    : _checkForBreaches,
                                 icon: _checkingBreaches
                                     ? const SizedBox(
                                         width: 14,
                                         height: 14,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2),
                                       )
                                     : const Icon(Icons.shield_outlined),
-                                label: Text(_checkingBreaches ? 'Checking...' : 'Check'),
+                                label: Text(_checkingBreaches
+                                    ? 'Checking...'
+                                    : 'Check'),
                               ),
                             ),
                           ],
@@ -230,7 +253,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-
   Future<void> _checkForBreaches() async {
     setState(() => _checkingBreaches = true);
 
@@ -253,7 +275,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       } else if (compromisedCount > 0) {
         TopRightNotification.show(
           context,
-          message: 'Breach check complete: $compromisedCount compromised account(s) found.',
+          message:
+              'Breach check complete: $compromisedCount compromised account(s) found.',
           type: TopRightNotificationType.warning,
           duration: const Duration(seconds: 4),
         );
@@ -286,7 +309,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (path == null) return;
 
     try {
-      await ref.read(exportVaultUseCaseProvider).call(vaultId: vault.id, targetPath: path);
+      await ref.read(exportVaultUseCaseProvider).call(
+            vaultId: vault.id,
+            vaultFileName: vault.fileName,
+            targetPath: path,
+          );
       if (mounted) {
         TopRightNotification.show(
           context,
@@ -314,22 +341,66 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Import options'),
-        content: const Text('Overwrite active vault? Choose cancel to add as new vault.'),
+        content: const Text(
+            'Overwrite active vault? Choose cancel to add as new vault.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(null), child: const Text('Cancel')),
-          OutlinedButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Add new')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Overwrite')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              child: const Text('Cancel')),
+          OutlinedButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Add new')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Overwrite')),
         ],
       ),
     );
 
     if (overwrite == null) return;
-    final vaultId = overwrite ? activeVault.id : DateTime.now().millisecondsSinceEpoch.toString();
+    final vaultId = overwrite
+        ? activeVault.id
+        : DateTime.now().millisecondsSinceEpoch.toString();
+    final temporaryFileName = overwrite ? activeVault.fileName : '$vaultId.dat';
     try {
-      await ref.read(importVaultUseCaseProvider).call(vaultId: vaultId, sourcePath: sourcePath);
+      final metadata = await ref.read(importVaultUseCaseProvider).call(
+            vaultId: vaultId,
+            vaultFileName: temporaryFileName,
+            sourcePath: sourcePath,
+          );
+      final preferredFileName =
+          overwrite ? activeVault.fileName : '${metadata.name}.dat';
+      final hasConflict = !overwrite &&
+          (ref.read(settingsControllerProvider).valueOrNull?.vaults.any(
+                    (item) => item.fileName == preferredFileName,
+                  ) ??
+              false);
+      final fileName = hasConflict ? temporaryFileName : preferredFileName;
+      if (!overwrite && fileName != temporaryFileName) {
+        await ref.read(renameVaultUseCaseProvider).call(
+              vaultId: vaultId,
+              oldFileName: temporaryFileName,
+              newFileName: fileName,
+              metadata: metadata,
+            );
+      }
       if (!overwrite) {
         await ref.read(settingsControllerProvider.notifier).upsertVault(
-              AppVault(id: vaultId, name: 'Imported Vault', passwordHint: ''),
+              AppVault(
+                id: vaultId,
+                name: metadata.name,
+                passwordHint: metadata.hint,
+                createdAt: metadata.createdAt,
+                fileName: fileName,
+              ),
+            );
+      } else {
+        await ref.read(settingsControllerProvider.notifier).upsertVault(
+              activeVault.copyWith(
+                name: metadata.name,
+                passwordHint: metadata.hint,
+                createdAt: metadata.createdAt,
+              ),
             );
       }
       if (mounted) {
@@ -354,7 +425,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final nextController = TextEditingController();
     final confirmController = TextEditingController();
     final hintController = TextEditingController(
-      text: ref.read(settingsControllerProvider).valueOrNull?.activeVault.passwordHint ?? '',
+      text: ref
+              .read(settingsControllerProvider)
+              .valueOrNull
+              ?.activeVault
+              .passwordHint ??
+          '',
     );
     bool hintOnly = false;
     final formKey = GlobalKey<FormState>();
@@ -373,39 +449,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   SwitchListTile(
                     value: hintOnly,
-                    onChanged: (value) => setStateDialog(() => hintOnly = value),
+                    onChanged: (value) =>
+                        setStateDialog(() => hintOnly = value),
                     title: const Text('Change password hint only'),
                   ),
                   if (!hintOnly) ...[
                     TextFormField(
                       controller: currentController,
                       obscureText: true,
-                      decoration: const InputDecoration(labelText: 'Current Password'),
-                      validator: (value) => (value == null || value.isEmpty) ? 'Required' : null,
+                      decoration:
+                          const InputDecoration(labelText: 'Current Password'),
+                      validator: (value) =>
+                          (value == null || value.isEmpty) ? 'Required' : null,
                     ),
                     TextFormField(
                       controller: nextController,
                       obscureText: true,
-                      decoration: const InputDecoration(labelText: 'New Password'),
-                      validator: (value) => PasswordStrengthValidator.validate(value ?? ''),
+                      decoration:
+                          const InputDecoration(labelText: 'New Password'),
+                      validator: (value) =>
+                          PasswordStrengthValidator.validate(value ?? ''),
                     ),
                     TextFormField(
                       controller: confirmController,
                       obscureText: true,
-                      decoration: const InputDecoration(labelText: 'Confirm New Password'),
-                      validator: (value) =>
-                          value != nextController.text ? 'Passwords do not match' : null,
+                      decoration: const InputDecoration(
+                          labelText: 'Confirm New Password'),
+                      validator: (value) => value != nextController.text
+                          ? 'Passwords do not match'
+                          : null,
                     ),
                   ],
                   TextFormField(
                     controller: hintController,
-                    decoration: const InputDecoration(labelText: 'Password hint'),
+                    decoration:
+                        const InputDecoration(labelText: 'Password hint'),
                   ),
                 ],
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+              TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel')),
               FilledButton(
                 onPressed: busy
                     ? null
@@ -417,16 +503,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         setStateDialog(() => busy = true);
                         try {
                           if (!hintOnly) {
-                            await ref.read(vaultControllerProvider.notifier).changeMasterPassword(
+                            await ref
+                                .read(vaultControllerProvider.notifier)
+                                .changeMasterPassword(
                                   currentPassword: currentController.text,
                                   newPassword: nextController.text,
                                 );
                           }
-                          final settings = ref.read(settingsControllerProvider).valueOrNull;
+                          final settings =
+                              ref.read(settingsControllerProvider).valueOrNull;
                           if (settings != null) {
-                            final updatedVault =
-                                settings.activeVault.copyWith(passwordHint: hintController.text.trim());
-                            await ref.read(settingsControllerProvider.notifier).upsertVault(updatedVault);
+                            final updatedVault = settings.activeVault.copyWith(
+                                passwordHint: hintController.text.trim());
+                            await ref
+                                .read(updateVaultMetadataUseCaseProvider)
+                                .call(
+                                  vaultId: updatedVault.id,
+                                  vaultFileName: updatedVault.fileName,
+                                  metadata: VaultMetadata(
+                                    name: updatedVault.name,
+                                    hint: updatedVault.passwordHint,
+                                    createdAt: updatedVault.createdAt,
+                                  ),
+                                );
+                            await ref
+                                .read(settingsControllerProvider.notifier)
+                                .upsertVault(updatedVault);
                           }
                           if (context.mounted) {
                             Navigator.of(context).pop(true);
@@ -434,13 +536,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         } on WrongPasswordException {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Current password is incorrect.')),
+                            const SnackBar(
+                                content:
+                                    Text('Current password is incorrect.')),
                           );
                           setStateDialog(() => busy = false);
                         } catch (_) {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Unable to update password/hint.')),
+                            const SnackBar(
+                                content:
+                                    Text('Unable to update password/hint.')),
                           );
                           setStateDialog(() => busy = false);
                         }

@@ -39,12 +39,14 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.initialAccount?.title ?? '');
+    _titleController =
+        TextEditingController(text: widget.initialAccount?.title ?? '');
     _usernameController =
         TextEditingController(text: widget.initialAccount?.username ?? '');
     _passwordController =
         TextEditingController(text: widget.initialAccount?.password ?? '');
-    _noteController = TextEditingController(text: widget.initialAccount?.note ?? '');
+    _noteController =
+        TextEditingController(text: widget.initialAccount?.note ?? '');
   }
 
   @override
@@ -97,10 +99,12 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   Future<void> _copyPassword() async {
     await ref.read(copyToClipboardUseCaseProvider).call(
           _passwordController.text,
-          autoClear: (ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults)
+          autoClear: (ref.read(settingsControllerProvider).valueOrNull ??
+                  AppSettings.defaults)
               .clipboardClearEnabled,
           clearAfter: Duration(
-            seconds: (ref.read(settingsControllerProvider).valueOrNull ?? AppSettings.defaults)
+            seconds: (ref.read(settingsControllerProvider).valueOrNull ??
+                    AppSettings.defaults)
                 .clipboardClearDuration,
           ),
         );
@@ -131,14 +135,18 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                     controller: _titleController,
                     decoration: const InputDecoration(labelText: 'Title'),
                     validator: (value) =>
-                        (value == null || value.trim().isEmpty) ? 'Required' : null,
+                        (value == null || value.trim().isEmpty)
+                            ? 'Required'
+                            : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _usernameController,
                     decoration: const InputDecoration(labelText: 'Username'),
                     validator: (value) =>
-                        (value == null || value.trim().isEmpty) ? 'Required' : null,
+                        (value == null || value.trim().isEmpty)
+                            ? 'Required'
+                            : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -168,7 +176,9 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                         label: const Text('Generate'),
                       ),
                       OutlinedButton.icon(
-                        onPressed: _passwordController.text.isEmpty ? null : _copyPassword,
+                        onPressed: _passwordController.text.isEmpty
+                            ? null
+                            : _copyPassword,
                         icon: const Icon(Icons.copy),
                         label: const Text('Copy'),
                       ),
@@ -189,28 +199,33 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                             divisions: 24,
                             value: _length,
                             label: _length.round().toString(),
-                            onChanged: (value) => setState(() => _length = value),
+                            onChanged: (value) =>
+                                setState(() => _length = value),
                           ),
                           Text('Length: ${_length.round()}'),
                           SwitchListTile(
                             value: _includeUppercase,
                             title: const Text('Uppercase'),
-                            onChanged: (value) => setState(() => _includeUppercase = value),
+                            onChanged: (value) =>
+                                setState(() => _includeUppercase = value),
                           ),
                           SwitchListTile(
                             value: _includeLowercase,
                             title: const Text('Lowercase'),
-                            onChanged: (value) => setState(() => _includeLowercase = value),
+                            onChanged: (value) =>
+                                setState(() => _includeLowercase = value),
                           ),
                           SwitchListTile(
                             value: _includeNumbers,
                             title: const Text('Numbers'),
-                            onChanged: (value) => setState(() => _includeNumbers = value),
+                            onChanged: (value) =>
+                                setState(() => _includeNumbers = value),
                           ),
                           SwitchListTile(
                             value: _includeSymbols,
                             title: const Text('Symbols'),
-                            onChanged: (value) => setState(() => _includeSymbols = value),
+                            onChanged: (value) =>
+                                setState(() => _includeSymbols = value),
                           ),
                         ],
                       ),

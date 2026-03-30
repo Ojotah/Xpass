@@ -19,25 +19,41 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  late final ProviderSubscription<AsyncValue<VaultState>> _vaultStateListener;
+
   @override
-  Widget build(BuildContext context) {
-    ref.listen(vaultControllerProvider, (previous, next) {
+  void initState() {
+    super.initState();
+    _vaultStateListener =
+        ref.listenManual(vaultControllerProvider, (previous, next) {
+      final wasUnlocked = previous?.valueOrNull?.isUnlocked ?? false;
       final isUnlocked = next.valueOrNull?.isUnlocked ?? false;
-      if (!isUnlocked) {
+      if (wasUnlocked && !isUnlocked && mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil(
           LockScreen.routeName,
           (route) => false,
         );
       }
     });
+  }
 
+  @override
+  void dispose() {
+    _vaultStateListener.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final vaultState = ref.watch(vaultControllerProvider);
     final filteredAccounts = ref.watch(filteredAccountsProvider);
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
 
     return GestureDetector(
-      onTap: () => ref.read(vaultControllerProvider.notifier).registerInteraction(),
-      onPanDown: (_) => ref.read(vaultControllerProvider.notifier).registerInteraction(),
+      onTap: () =>
+          ref.read(vaultControllerProvider.notifier).registerInteraction(),
+      onPanDown: (_) =>
+          ref.read(vaultControllerProvider.notifier).registerInteraction(),
       behavior: HitTestBehavior.translucent,
       child: Scaffold(
         appBar: AppBar(
@@ -47,7 +63,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               tooltip: 'Vaults',
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const VaultSelectionScreen()),
+                  MaterialPageRoute<void>(
+                      builder: (_) => const VaultSelectionScreen()),
                 );
               },
               icon: const Icon(Icons.folder_copy_outlined),
@@ -56,14 +73,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               tooltip: 'Settings',
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+                  MaterialPageRoute<void>(
+                      builder: (_) => const SettingsScreen()),
                 );
               },
               icon: const Icon(Icons.settings_outlined),
             ),
             IconButton(
               tooltip: 'Lock Vault',
-              onPressed: () => ref.read(vaultControllerProvider.notifier).lock(),
+              onPressed: () =>
+                  ref.read(vaultControllerProvider.notifier).lock(),
               icon: const Icon(Icons.lock_outline),
             ),
           ],
@@ -71,7 +90,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         body: vaultState.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, __) => const Center(
-            child: Text('Something went wrong. Please lock and unlock vault again.'),
+            child: Text(
+                'Something went wrong. Please lock and unlock vault again.'),
           ),
           data: (data) {
             return Padding(
@@ -82,9 +102,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Center(
                     child: Text(
                       settings?.activeVault.name ?? 'Vault Accounts',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -94,19 +115,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       prefixIcon: Icon(Icons.search),
                       hintText: 'Search by title or username',
                     ),
-                    onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
+                    onChanged: (value) =>
+                        ref.read(searchQueryProvider.notifier).state = value,
                   ),
                   const SizedBox(height: 10),
                   Expanded(
                     child: data.accounts.isEmpty
-                        ? const Center(child: Text('No accounts yet. Add your first account.'))
+                        ? const Center(
+                            child: Text(
+                                'No accounts yet. Add your first account.'))
                         : filteredAccounts.isEmpty
                             ? const Center(child: Text('No accounts found.'))
                             : AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 220),
                                 child: GridView.builder(
-                                  key: ValueKey('accounts-grid-${filteredAccounts.length}'),
-                                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  key: ValueKey(
+                                      'accounts-grid-${filteredAccounts.length}'),
+                                  gridDelegate:
+                                      const SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: 3,
                                     crossAxisSpacing: 10,
                                     mainAxisSpacing: 10,
@@ -115,8 +141,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   itemCount: filteredAccounts.length,
                                   itemBuilder: (context, index) {
                                     final account = filteredAccounts[index];
-                                    final originalIndex = data.accounts.indexOf(account);
-                                    final riskColor = _riskColor(context, account.riskScore);
+                                    final originalIndex =
+                                        data.accounts.indexOf(account);
+                                    final riskColor =
+                                        _riskColor(context, account.riskScore);
 
                                     return Card(
                                       clipBehavior: Clip.antiAlias,
@@ -124,7 +152,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         onTap: () {
                                           Navigator.of(context).push(
                                             MaterialPageRoute<void>(
-                                              builder: (_) => AccountDetailsScreen(
+                                              builder: (_) =>
+                                                  AccountDetailsScreen(
                                                 index: originalIndex,
                                                 account: account,
                                               ),
@@ -137,7 +166,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                             vertical: 8,
                                           ),
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Row(
                                                 children: [
@@ -145,11 +175,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                     child: Text(
                                                       account.title,
                                                       maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                       style: Theme.of(context)
                                                           .textTheme
                                                           .titleLarge
-                                                          ?.copyWith(fontWeight: FontWeight.w800),
+                                                          ?.copyWith(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w800),
                                                     ),
                                                   ),
                                                   Icon(
@@ -164,8 +198,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 value: account.riskScore / 100,
                                                 minHeight: 4,
                                                 color: riskColor,
-                                                backgroundColor:
-                                                    Theme.of(context).colorScheme.surfaceContainerHighest,
+                                                backgroundColor: Theme.of(
+                                                        context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest,
                                               ),
                                               const SizedBox(height: 6),
                                               Text(
@@ -175,14 +211,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 style: Theme.of(context)
                                                     .textTheme
                                                     .titleMedium
-                                                    ?.copyWith(fontWeight: FontWeight.w600),
+                                                    ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.w600),
                                               ),
                                               const SizedBox(height: 6),
                                               Text(
-                                                account.note.trim().isEmpty ? 'No note' : account.note,
+                                                account.note.trim().isEmpty
+                                                    ? 'No note'
+                                                    : account.note,
                                                 maxLines: 2,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
                                                       color: Theme.of(context)
                                                           .colorScheme
                                                           .onSurfaceVariant,
@@ -194,11 +237,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 runSpacing: 2,
                                                 children: [
                                                   if (account.isCompromised)
-                                                    _riskBadge(context, 'Leaked', Colors.red.shade700),
+                                                    _riskBadge(
+                                                        context,
+                                                        'Leaked',
+                                                        Colors.red.shade700),
                                                   if (account.isWeak)
-                                                    _riskBadge(context, 'Weak', Colors.orange.shade700),
+                                                    _riskBadge(context, 'Weak',
+                                                        Colors.orange.shade700),
                                                   if (account.isReused)
-                                                    _riskBadge(context, 'Reused', Colors.amber.shade800),
+                                                    _riskBadge(
+                                                        context,
+                                                        'Reused',
+                                                        Colors.amber.shade800),
                                                 ],
                                               ),
                                             ],

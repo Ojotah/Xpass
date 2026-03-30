@@ -5,7 +5,11 @@ class DeleteVault {
 
   final VaultRepository _repository;
 
-  Future<void> call(String vaultId) {
-    return _repository.deleteVault(vaultId);
+  Future<void> call({
+    required String vaultId,
+    required String vaultFileName,
+  }) {
+    return _repository.deleteVault(
+        vaultId: vaultId, vaultFileName: vaultFileName);
   }
 }

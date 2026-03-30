@@ -33,9 +33,12 @@ class StartupVaultSelectionScreen extends ConsumerWidget {
                           : Text('Hint: ${vault.passwordHint}'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () async {
-                        await ref.read(settingsControllerProvider.notifier).switchVault(vault.id);
+                        await ref
+                            .read(settingsControllerProvider.notifier)
+                            .switchVault(vault.id);
                         if (!context.mounted) return;
-                        Navigator.of(context).pushReplacementNamed(LockScreen.routeName);
+                        Navigator.of(context)
+                            .pushReplacementNamed(LockScreen.routeName);
                       },
                     ),
                   );
@@ -63,59 +66,44 @@ class StartupVaultSelectionScreen extends ConsumerWidget {
       return;
     }
 
-    if (!context.mounted) return;
-
-    final nameController = TextEditingController(text: 'Imported Vault');
-    final hintController = TextEditingController();
-    final data = await showDialog<(String, String)?>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Import Vault'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Vault Name'),
-            ),
-            TextField(
-              controller: hintController,
-              decoration: const InputDecoration(labelText: 'Hint (optional)'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop((nameController.text.trim(), hintController.text.trim())),
-            child: const Text('Import'),
-          ),
-        ],
-      ),
-    );
-    nameController.dispose();
-    hintController.dispose();
-
-    if (data == null) return;
-
     final vaultId = DateTime.now().millisecondsSinceEpoch.toString();
+    final temporaryFileName = '$vaultId.dat';
     try {
-      await ref.read(importVaultUseCaseProvider).call(vaultId: vaultId, sourcePath: sourcePath);
+      final metadata = await ref.read(importVaultUseCaseProvider).call(
+            vaultId: vaultId,
+            vaultFileName: temporaryFileName,
+            sourcePath: sourcePath,
+          );
+      final targetFileName = '${metadata.name}.dat';
+      final settings = ref.read(settingsControllerProvider).valueOrNull;
+      final hasNameConflict =
+          settings?.vaults.any((item) => item.fileName == targetFileName) ??
+              false;
+      final fileName = hasNameConflict ? temporaryFileName : targetFileName;
+      if (fileName != temporaryFileName) {
+        await ref.read(renameVaultUseCaseProvider).call(
+              vaultId: vaultId,
+              oldFileName: temporaryFileName,
+              newFileName: fileName,
+              metadata: metadata,
+            );
+      }
       await ref.read(settingsControllerProvider.notifier).upsertVault(
             AppVault(
               id: vaultId,
-              name: data.$1.isEmpty ? 'Imported Vault' : data.$1,
-              passwordHint: data.$2,
+              name: metadata.name,
+              passwordHint: metadata.hint,
+              createdAt: metadata.createdAt,
+              fileName: fileName,
             ),
           );
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vault imported.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Vault imported.')));
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Import failed.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Import failed.')));
     }
   }
 }
